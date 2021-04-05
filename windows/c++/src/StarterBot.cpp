@@ -41,8 +41,14 @@ void StarterBot::onFrame()
     // Send our idle workers to mine minerals so they don't just stand there
     sendIdleWorkersToMinerals();
 
+    // Position idle zealots either for base defense or attacking enemy
+    positionIdleZealots();
+
     // Train more workers so we can gather more income
     trainAdditionalWorkers();
+
+    // Train more zealots
+    trainZealots();
 
     // Build more supply if we are going to run out soon
     buildAdditionalSupply();
@@ -77,6 +83,32 @@ void StarterBot::sendIdleWorkersToMinerals()
     }
 }
 
+// Position Zealots depending on current game state
+void StarterBot::positionIdleZealots()
+{
+    const BWAPI::Unitset& myUnits = BWAPI::Broodwar->self()->getUnits();
+    for (auto& unit : myUnits)
+    {
+        bool idelZealot = (unit->getType() == BWAPI::UnitTypes::Protoss_Zealot && (unit->isIdle() || unit->isHoldingPosition()));
+        //if not attacking or under attack stay in base to defend (patrol)
+        if (idelZealot && !underattack() && !attacking())
+        {
+            BWAPI::Position startPos = Tools::GetDepot()->getPosition();
+            unit->patrol(startPos);
+
+        }
+
+        //else if (underattack()) {defend}
+
+        //else if (attack()) {move unit to attack}
+    }
+}
+
+// Return true if base is under attack
+bool StarterBot::underattack() { return false; }
+
+// Return true if attacking enemy base
+bool StarterBot::attacking() { return false; }
 // Train more workers so we can gather more income
 void StarterBot::trainAdditionalWorkers()
 {
@@ -100,7 +132,20 @@ void StarterBot::trainAdditionalWorkers()
     }
 }
 
+void StarterBot::trainZealots()
+{
+    const BWAPI::Unitset& myUnits = BWAPI::Broodwar->self()->getUnits();
+    for (auto& unit : myUnits)
+    {
+        //no limit on zealots production for now
+        if (unit->getType() == BWAPI::UnitTypes::Protoss_Gateway)
+        {
+            if (!unit->isTraining()) { unit->train(BWAPI::UnitTypes::Protoss_Zealot); }
+        }
+    }
+}
 // Build more supply if we are going to run out soon
+
 void StarterBot::buildAdditionalSupply()
 {
     // Get the amount of supply supply we currently have unused

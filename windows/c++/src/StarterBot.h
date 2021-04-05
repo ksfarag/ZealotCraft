@@ -18,7 +18,11 @@ public:
 
     // helper functions to get you started with bot programming and learn the API
     void sendIdleWorkersToMinerals();
+	void positionIdleZealots();
+	bool underattack();
+	bool attacking();
     void trainAdditionalWorkers();
+	void trainZealots();
     void buildAdditionalSupply();
 	void buildGateway();
     void drawDebugInformation();
