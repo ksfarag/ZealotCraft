@@ -38,109 +38,15 @@ void StarterBot::onFrame()
     // Update our MapTools information
     m_mapTools.onFrame();
 
-    //checking if we are still building
-    if (buildIndex < sizeof(buildOrder))
-    {
-        std::string currentBuildItem = buildOrder[buildIndex];
+    // Send our idle workers to mine minerals so they don't just stand there
+    sendIdleWorkersToMinerals();
 
-        int maxUnits = initalNumberOfUnits + buildIndex + 1;
+    // Train more workers so we can gather more income
+    trainAdditionalWorkers();
 
-        sendIdleWorkersToMinerals();
+    // Build more supply if we are going to run out soon
+    buildAdditionalSupply();
 
-        if (currentBuildItem == "Probe")
-        {
-            trainAdditionalWorkers();
-
-            //updating build index
-            int totalNumUnits = Tools::GetTotalUnits();
-
-            if (totalNumUnits == maxUnits) {
-                buildIndex = buildIndex + 1;
-            }
-        }
-        else {
-
-            //getting all units
-            const BWAPI::Unitset& allMyUnits = BWAPI::Broodwar->self()->getUnits();
-
-            BWAPI::Broodwar->drawTextScreen(BWAPI::Position(10, 30), "Build created \n");
-
-            for (auto& unit : allMyUnits)
-            {
-                // Cheking if unit type is worker
-                if (unit->getType().isWorker())
-                {
-                    //stoping unit
-                    unit->stop();
-
-                }
-            }
-
-        }
-
-    }
-
-    /*
-    bool finalPositionSet = false;
-
-    //getting to number of workers
-    const BWAPI::UnitType workerType = BWAPI::Broodwar->self()->getRace().getWorker();
-    const int maxNumOfWorkers = 8;
-    const int numOfWorkers = Tools::CountUnitsOfType(workerType, BWAPI::Broodwar->self()->getUnits());
-
-
-
-    if (numOfWorkers < maxNumOfWorkers) {
-
-        // Send our idle workers to mine minerals so they don't just stand there
-        sendIdleWorkersToMinerals();
-
-        // Train more workers so we can gather more income
-        trainAdditionalWorkers();
-
-        // Build more supply if we are going to run out soon
-        buildAdditionalSupply();
-
-    }
-    else if(!finalPositionSet) {
-
-        //getting all units
-        const BWAPI::Unitset& allMyUnits = BWAPI::Broodwar->self()->getUnits();
-
-        //getting location of nexus
-        const BWAPI::Unit nexusDepot = Tools::GetDepot();
-        auto nexusLocation = nexusDepot->getPosition();
-
-        //position for first worker near nexus
-        int xPosition = nexusLocation.x - 50;
-        int yPosition = nexusLocation.y - 100;
-
-        for (auto& unit : allMyUnits)
-        {
-            // Cheking if unit type is worker
-            if (unit->getType().isWorker())
-            {
-                //stoping unit
-                unit->stop();
-
-                //moving unit to straight line
-                BWAPI::Position pos(xPosition,yPosition);
-                unit->move(pos);
-
-                //updating x position for next unit
-                xPosition = xPosition + 35;
-               
-            }
-        }
-
-
-        //printing group members name
-        BWAPI::Broodwar->drawTextScreen(BWAPI::Position(10, 30), "Giovanni Sylvestre, Kerolos Farag\n");
-
-        finalPositionSet = true; 
-
-    }*/
-    
     // Build a gateway to produce zealots
     buildGateway();
 
