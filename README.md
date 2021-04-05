@@ -2,7 +2,7 @@ A README to sort steps/tasks by order
 
 Start the game by sending probes to minerals and produce new workers/probes right away
 
-Once reached a total of 6 probes, send the one of the probes to build a pylon then go mine with others
+Once reached a total of 8 probes, send the one of the probes to build a pylon then go mine with others
 
 Once reached 8 probes && got a total of 150 minerals or more, BUILD A GATEWAY
 
