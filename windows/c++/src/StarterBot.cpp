@@ -141,6 +141,8 @@ void StarterBot::onFrame()
 
     }*/
     
+    // Build a gateway to produce zealots
+    buildGateway();
 
     // Draw unit health bars, which brood war unfortunately does not do
     Tools::DrawUnitHealthBars();
@@ -173,10 +175,15 @@ void StarterBot::sendIdleWorkersToMinerals()
 void StarterBot::trainAdditionalWorkers()
 {
     const BWAPI::UnitType workerType = BWAPI::Broodwar->self()->getRace().getWorker();
-    
+    const int workersWanted = 20;
     const int workersOwned = Tools::CountUnitsOfType(workerType, BWAPI::Broodwar->self()->getUnits());
-    const int workersWanted = workersOwned + 1;
-    if (workersOwned < workersWanted)
+
+    // Pause training once at the start of the game to allow building a pylon when we have 8/9 workers
+    bool pauseTraining;
+    if (Tools::GetTotalSupply(true) == 18 && BWAPI::Broodwar->self()->supplyUsed() == 16) { pauseTraining = true; BWAPI::Broodwar->printf("Training paused!!!"); }
+    else { pauseTraining = false; }
+
+    if (workersOwned < workersWanted && !pauseTraining)
     {
         // get the unit pointer to my depot
         const BWAPI::Unit myDepot = Tools::GetDepot();
@@ -193,8 +200,11 @@ void StarterBot::buildAdditionalSupply()
     // Get the amount of supply supply we currently have unused
     const int unusedSupply = Tools::GetTotalSupply(true) - BWAPI::Broodwar->self()->supplyUsed();
 
+    // Get the amount of minerals farmed
+    int mineralsCount = BWAPI::Broodwar->self()->gatheredMinerals();
+
     // If we have a sufficient amount of supply, we don't need to do anything
-    if (unusedSupply >= 2) { return; }
+    if (unusedSupply >= 4 || mineralsCount < 151) { return; }
 
     // Otherwise, we are going to build a supply provider
     const BWAPI::UnitType supplyProviderType = BWAPI::Broodwar->self()->getRace().getSupplyProvider();
@@ -203,6 +213,26 @@ void StarterBot::buildAdditionalSupply()
     if (startedBuilding)
     {
         BWAPI::Broodwar->printf("Started Building %s", supplyProviderType.getName().c_str());
+    }
+}
+
+// Build a gateway
+void StarterBot::buildGateway()
+{
+    // Get the amount of minerals farmed
+    int mineralsCount = BWAPI::Broodwar->self()->minerals();
+    const BWAPI::UnitType gateWay = BWAPI::UnitTypes::Protoss_Gateway;
+
+    int gateWaysOwned = Tools::CountUnitsOfType(gateWay, BWAPI::Broodwar->self()->getUnits());
+
+    if (gateWaysOwned < 2 && mineralsCount >= 151)
+    {
+        const bool startedBuilding = Tools::BuildBuilding(gateWay);
+
+        if (startedBuilding)
+        {
+            BWAPI::Broodwar->printf("Started Building %s", gateWay.getName().c_str());
+        }
     }
 }
 
