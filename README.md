@@ -6,7 +6,7 @@ Once reached a total of 8 probes, send the one of the probes to build a pylon th
 
 Once reached 8 probes && got a total of 150 minerals or more, BUILD A GATEWAY
 
-Once reached 10 probes, use one probe to build a secound GATEWAY and a secound pylon
+Once reached 10 probes, use one probe to build a second GATEWAY and a second pylon
 
 Send that same probe to start the first SCOUT to find enemy base
 
