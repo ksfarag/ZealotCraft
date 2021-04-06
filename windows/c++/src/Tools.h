@@ -21,8 +21,8 @@ namespace Tools
 
     int GetTotalSupply(bool inProgress = false);
 
-    //method to get total number of Units
-    int GetTotalUnits();
+    //method used to get check if we are at enemy base
+    bool AtEnemyBase();
 
     void DrawUnitHealthBars();
     void DrawHealthBar(BWAPI::Unit unit, double ratio, BWAPI::Color color, int yOffset);

@@ -8,13 +8,19 @@ class StarterBot
 {
     MapTools m_mapTools;
 
-	int buildIndex = 0;
-	int initalNumberOfUnits;
-	std::string buildOrder[3] = {"Probe","Probe","Pylon"};
+	//unit used to scout
+	BWAPI::Unit scout = nullptr;
+	bool scouting = false;
+
+	bool enemyFound = false;
+	BWAPI::Position enemyBasePosition;
 	
 public:
 
     StarterBot();
+
+	//method used to scout enemy
+	void scoutEnemy();
 
     // helper functions to get you started with bot programming and learn the API
     void sendIdleWorkersToMinerals();

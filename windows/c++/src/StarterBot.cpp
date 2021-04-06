@@ -22,9 +22,6 @@ void StarterBot::onStart()
     // Call MapTools OnStart
     m_mapTools.onStart();
 
-    //getting number of initial units when game starts
-    initalNumberOfUnits = Tools::GetTotalUnits();
-
 }
 
 // Called whenever the game ends and tells you if you won or not
@@ -38,6 +35,17 @@ void StarterBot::onFrame()
     // Update our MapTools information
     m_mapTools.onFrame();
 
+    //setting scouting unit
+    if (!scout) {
+        scout = Tools::GetUnitOfType(BWAPI::Broodwar->self()->getRace().getWorker());
+    }
+
+    //sending scout after we have two gateways
+    const BWAPI::Unitset& allMyUnits = BWAPI::Broodwar->self()->getUnits();
+    if (!enemyFound && Tools::CountUnitsOfType(BWAPI::UnitTypes::Protoss_Gateway, allMyUnits) > 1) {
+        scoutEnemy();
+    }
+
     // Send our idle workers to mine minerals so they don't just stand there
     sendIdleWorkersToMinerals();
 
@@ -50,11 +58,15 @@ void StarterBot::onFrame()
     // Train more zealots
     trainZealots();
 
-    // Build more supply if we are going to run out soon
-    buildAdditionalSupply();
+    if (!scouting) { //Temp .. to prevent scout unit from being called to build while scouting
+        // Build more supply if we are going to run out soon
+        buildAdditionalSupply();
 
-    // Build a gateway to produce zealots
-    buildGateway();
+        // Build a gateway to produce zealots
+        buildGateway();
+    }
+
+    
 
     // Draw unit health bars, which brood war unfortunately does not do
     Tools::DrawUnitHealthBars();
@@ -72,13 +84,14 @@ void StarterBot::sendIdleWorkersToMinerals()
     for (auto& unit : myUnits)
     {
         // Check the unit type, if it is an idle worker, then we want to send it somewhere
-        if (unit->getType().isWorker() && unit->isIdle())
-        {
+        if (unit->getType().isWorker() && unit->isIdle()){
+            
             // Get the closest mineral to this worker unit
             BWAPI::Unit closestMineral = Tools::GetClosestUnitTo(unit, BWAPI::Broodwar->getMinerals());
 
             // If a valid mineral was found, right click it with the unit in order to start harvesting
             if (closestMineral) { unit->rightClick(closestMineral); }
+            
         }
     }
 }
@@ -89,13 +102,16 @@ void StarterBot::positionIdleZealots()
     const BWAPI::Unitset& myUnits = BWAPI::Broodwar->self()->getUnits();
     for (auto& unit : myUnits)
     {
-        bool idelZealot = (unit->getType() == BWAPI::UnitTypes::Protoss_Zealot && (unit->isIdle() || unit->isHoldingPosition()));
-        //if not attacking or under attack stay in base to defend (patrol)
-        if (idelZealot && !underattack() && !attacking())
-        {
+        bool idleZealot = (unit->getType() == BWAPI::UnitTypes::Protoss_Zealot && (unit->isIdle() || unit->isHoldingPosition()));
+        int numberOfZealots = Tools::CountUnitsOfType(BWAPI::UnitTypes::Protoss_Zealot, myUnits);
+
+        //sending zealots to attack in groups of 2 if they are idle
+        if (idleZealot && (numberOfZealots % 2 == 0) && enemyFound) {
+            unit->attack(enemyBasePosition);
+        }
+        else if(idleZealot && !underattack() && !attacking()) { //units before scout found enemy location will be used to defend
             BWAPI::Position startPos = Tools::GetDepot()->getPosition();
             unit->patrol(startPos);
-
         }
 
         //else if (underattack()) {defend}
@@ -144,7 +160,42 @@ void StarterBot::trainZealots()
         }
     }
 }
-// Build more supply if we are going to run out soon
+
+void StarterBot::scoutEnemy()
+{
+
+    //searching all start positions
+    auto& startLocations = BWAPI::Broodwar->getStartLocations();
+    scouting = true;
+
+    for (BWAPI::TilePosition tilePos : startLocations)
+    {
+        
+        if (BWAPI::Broodwar->isExplored(tilePos) || enemyFound) { continue; }
+        
+        //going to location
+        BWAPI::Position pos(tilePos);
+        scout->move(pos);
+
+        //checking if we are at enemy base
+        enemyFound = Tools::AtEnemyBase();
+
+        if (enemyFound) {
+
+            BWAPI::Broodwar->printf("Enemy Found");
+            enemyBasePosition = pos;
+
+            //moving unit back to home base
+            scout->move(BWAPI::Position(BWAPI::Broodwar->self()->getStartLocation()));
+            scouting = false;
+        }
+
+        break;
+    }
+
+   
+
+}
 
 void StarterBot::buildAdditionalSupply()
 {
