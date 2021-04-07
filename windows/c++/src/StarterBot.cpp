@@ -84,14 +84,15 @@ void StarterBot::sendIdleWorkersToMinerals()
     for (auto& unit : myUnits)
     {
         // Check the unit type, if it is an idle worker, then we want to send it somewhere
-        if (unit->getType().isWorker() && unit->isIdle()){
-            
+        if (unit->getType().isWorker() && unit->isIdle())
+        {
+            // Player starting position (depot position)
+            BWAPI::Position startPos = Tools::GetDepot()->getPosition();
             // Get the closest mineral to this worker unit
-            BWAPI::Unit closestMineral = Tools::GetClosestUnitTo(unit, BWAPI::Broodwar->getMinerals());
+            BWAPI::Unit closestMineralToBase = Tools::GetClosestUnitTo(startPos, BWAPI::Broodwar->getMinerals());
 
             // If a valid mineral was found, right click it with the unit in order to start harvesting
-            if (closestMineral) { unit->rightClick(closestMineral); }
-            
+            if (closestMineralToBase) { unit->rightClick(closestMineralToBase); }
         }
     }
 }
@@ -102,16 +103,13 @@ void StarterBot::positionIdleZealots()
     const BWAPI::Unitset& myUnits = BWAPI::Broodwar->self()->getUnits();
     for (auto& unit : myUnits)
     {
-        bool idleZealot = (unit->getType() == BWAPI::UnitTypes::Protoss_Zealot && (unit->isIdle() || unit->isHoldingPosition()));
-        int numberOfZealots = Tools::CountUnitsOfType(BWAPI::UnitTypes::Protoss_Zealot, myUnits);
-
-        //sending zealots to attack in groups of 2 if they are idle
-        if (idleZealot && (numberOfZealots % 2 == 0) && enemyFound) {
-            unit->attack(enemyBasePosition);
-        }
-        else if(idleZealot && !underattack() && !attacking()) { //units before scout found enemy location will be used to defend
+        bool idelZealot = (unit->getType() == BWAPI::UnitTypes::Protoss_Zealot && (unit->isIdle() || unit->isHoldingPosition()));
+        //if not attacking or under attack stay in base to defend (patrol)
+        if (idelZealot && !underattack() && !attacking())
+        {
             BWAPI::Position startPos = Tools::GetDepot()->getPosition();
             unit->patrol(startPos);
+
         }
 
         //else if (underattack()) {defend}
