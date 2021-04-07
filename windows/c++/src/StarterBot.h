@@ -8,19 +8,9 @@ class StarterBot
 {
     MapTools m_mapTools;
 
-	//unit used to scout
-	BWAPI::Unit scout = nullptr;
-	bool scouting = false;
-
-	bool enemyFound = false;
-	BWAPI::Position enemyBasePosition;
-	
 public:
 
     StarterBot();
-
-	//method used to scout enemy
-	void scoutEnemy();
 
     // helper functions to get you started with bot programming and learn the API
     void sendIdleWorkersToMinerals();
@@ -31,6 +21,7 @@ public:
 	void trainZealots();
     void buildAdditionalSupply();
 	void buildGateway();
+	bool AtEnemyBase();
     void drawDebugInformation();
 
     // functions that are triggered by various BWAPI events from main.cpp

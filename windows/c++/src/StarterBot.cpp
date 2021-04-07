@@ -13,38 +13,28 @@ StarterBot::StarterBot()
 void StarterBot::onStart()
 {
     // Set our BWAPI options here    
-	BWAPI::Broodwar->setLocalSpeed(10);
-    BWAPI::Broodwar->setFrameSkip(0);
+	BWAPI::Broodwar->setLocalSpeed(5); //same as "/speed 10" within game, each frame of the game takes the set number of MS in this function prackets
+    // if we setLocalSpeed(0), the game runs as fast as possible
+    BWAPI::Broodwar->setFrameSkip(0); //skips rendering frames for more performance
     
-    // Enable the flag that tells BWAPI top let users enter input while bot plays
-    BWAPI::Broodwar->enableFlag(BWAPI::Flag::UserInput);
-
+    BWAPI::Broodwar->enableFlag(BWAPI::Flag::UserInput); // Enable the flag that tells BWAPI top let users enter input while bot plays
+    //enableFlag enables you to control units while bot is running
     // Call MapTools OnStart
     m_mapTools.onStart();
-
 }
 
 // Called whenever the game ends and tells you if you won or not
 void StarterBot::onEnd(bool isWinner) 
 {
     std::cout << "We " << (isWinner ? "won!" : "lost!") << "\n";
+    //you can appened the game result to a file from this function to record win/lose statistics 
 }
+
 // Called on each frame of the game
 void StarterBot::onFrame()
 {
     // Update our MapTools information
     m_mapTools.onFrame();
-
-    //setting scouting unit
-    if (!scout) {
-        scout = Tools::GetUnitOfType(BWAPI::Broodwar->self()->getRace().getWorker());
-    }
-
-    //sending scout after we have two gateways
-    const BWAPI::Unitset& allMyUnits = BWAPI::Broodwar->self()->getUnits();
-    if (!enemyFound && Tools::CountUnitsOfType(BWAPI::UnitTypes::Protoss_Gateway, allMyUnits) > 1) {
-        scoutEnemy();
-    }
 
     // Send our idle workers to mine minerals so they don't just stand there
     sendIdleWorkersToMinerals();
@@ -58,15 +48,11 @@ void StarterBot::onFrame()
     // Train more zealots
     trainZealots();
 
-    if (!scouting) { //Temp .. to prevent scout unit from being called to build while scouting
-        // Build more supply if we are going to run out soon
-        buildAdditionalSupply();
+    // Build more supply if we are going to run out soon
+    buildAdditionalSupply();
 
-        // Build a gateway to produce zealots
-        buildGateway();
-    }
-
-    
+    // Build a gateway to produce zealots
+    buildGateway();
 
     // Draw unit health bars, which brood war unfortunately does not do
     Tools::DrawUnitHealthBars();
@@ -111,9 +97,9 @@ void StarterBot::positionIdleZealots()
             unit->patrol(startPos);
 
         }
-
+        
         //else if (underattack()) {defend}
-
+        
         //else if (attack()) {move unit to attack}
     }
 }
@@ -123,18 +109,20 @@ bool StarterBot::underattack() { return false; }
 
 // Return true if attacking enemy base
 bool StarterBot::attacking() { return false; }
+
+
 // Train more workers so we can gather more income
 void StarterBot::trainAdditionalWorkers()
 {
     const BWAPI::UnitType workerType = BWAPI::Broodwar->self()->getRace().getWorker();
     const int workersWanted = 20;
     const int workersOwned = Tools::CountUnitsOfType(workerType, BWAPI::Broodwar->self()->getUnits());
-
+    
     // Pause training once at the start of the game to allow building a pylon when we have 8/9 workers
-    bool pauseTraining;
-    if (Tools::GetTotalSupply(true) == 18 && BWAPI::Broodwar->self()->supplyUsed() == 16) { pauseTraining = true; BWAPI::Broodwar->printf("Training paused!!!"); }
+    bool pauseTraining = false;
+    if (Tools::GetTotalSupply(true) == 18 && BWAPI::Broodwar->self()->supplyUsed() == 16) { pauseTraining = true; BWAPI::Broodwar->printf("Training paused!!!");}
     else { pauseTraining = false; }
-
+    
     if (workersOwned < workersWanted && !pauseTraining)
     {
         // get the unit pointer to my depot
@@ -146,65 +134,29 @@ void StarterBot::trainAdditionalWorkers()
     }
 }
 
+
 void StarterBot::trainZealots()
 {
     const BWAPI::Unitset& myUnits = BWAPI::Broodwar->self()->getUnits();
     for (auto& unit : myUnits)
     {
         //no limit on zealots production for now
-        if (unit->getType() == BWAPI::UnitTypes::Protoss_Gateway)
+        if (unit->getType()== BWAPI::UnitTypes::Protoss_Gateway)
         {
             if (!unit->isTraining()) { unit->train(BWAPI::UnitTypes::Protoss_Zealot); }
         }
     }
 }
 
-void StarterBot::scoutEnemy()
-{
-
-    //searching all start positions
-    auto& startLocations = BWAPI::Broodwar->getStartLocations();
-    scouting = true;
-
-    for (BWAPI::TilePosition tilePos : startLocations)
-    {
-        
-        if (BWAPI::Broodwar->isExplored(tilePos) || enemyFound) { continue; }
-        
-        //going to location
-        BWAPI::Position pos(tilePos);
-        scout->move(pos);
-
-        //checking if we are at enemy base
-        enemyFound = Tools::AtEnemyBase();
-
-        if (enemyFound) {
-
-            BWAPI::Broodwar->printf("Enemy Found");
-            enemyBasePosition = pos;
-
-            //moving unit back to home base
-            scout->move(BWAPI::Position(BWAPI::Broodwar->self()->getStartLocation()));
-            scouting = false;
-        }
-
-        break;
-    }
-
-   
-
-}
-
+// Build more supply if we are going to run out soon
 void StarterBot::buildAdditionalSupply()
 {
     // Get the amount of supply supply we currently have unused
     const int unusedSupply = Tools::GetTotalSupply(true) - BWAPI::Broodwar->self()->supplyUsed();
-
     // Get the amount of minerals farmed
-    int mineralsCount = BWAPI::Broodwar->self()->gatheredMinerals();
-
+    int mineralsCount = BWAPI::Broodwar->self()->minerals(); 
     // If we have a sufficient amount of supply, we don't need to do anything
-    if (unusedSupply >= 4 || mineralsCount < 151) { return; }
+    if (unusedSupply >= 4 || mineralsCount < 101 ) { return; } // 2 here means 1 cause supply in game is * by 2
 
     // Otherwise, we are going to build a supply provider
     const BWAPI::UnitType supplyProviderType = BWAPI::Broodwar->self()->getRace().getSupplyProvider();
@@ -217,7 +169,7 @@ void StarterBot::buildAdditionalSupply()
 }
 
 // Build a gateway
-void StarterBot::buildGateway()
+void StarterBot::buildGateway() 
 {
     // Get the amount of minerals farmed
     int mineralsCount = BWAPI::Broodwar->self()->minerals();
@@ -236,10 +188,72 @@ void StarterBot::buildGateway()
     }
 }
 
+/*
+void StarterBot::scoutEnemy()
+{
+
+    //searching all start positions
+    auto& startLocations = BWAPI::Broodwar->getStartLocations();
+    scouting = true;
+
+    for (BWAPI::TilePosition tilePos : startLocations)
+    {
+
+        if (BWAPI::Broodwar->isExplored(tilePos) || enemyFound) { continue; }
+
+        //going to location
+        BWAPI::Position pos(tilePos);
+        scout->move(pos);
+
+        //checking if we are at enemy base
+        enemyFound = AtEnemyBase();
+
+        if (enemyFound) {
+
+            BWAPI::Broodwar->printf("Enemy Found");
+            enemyBasePosition = pos;
+
+            //moving unit back to home base
+            scout->move(BWAPI::Position(BWAPI::Broodwar->self()->getStartLocation()));
+            scouting = false;
+        }
+
+        break;
+    }
+
+}
+*/
+
+// Helper funtion for scoutEnemy()
+bool StarterBot::AtEnemyBase()
+{
+    BWAPI::UnitType enemySupplyType = BWAPI::Broodwar->enemy()->getRace().getSupplyProvider();
+
+    bool baseFound = false;
+
+    for (auto unit : BWAPI::Broodwar->enemy()->getUnits())
+    {
+        //checking if unit is enemy supply unit
+        BWAPI::UnitType enemyType = unit->getType();
+        if (enemyType == enemySupplyType) {
+            baseFound = true;
+            break;
+        }
+
+    }
+
+    if (baseFound) {
+        return true;
+    }
+    else {
+        return false;
+    }
+}
+
 // Draw some relevent information to the screen to help us debug the bot
 void StarterBot::drawDebugInformation()
 {
-    BWAPI::Broodwar->drawTextScreen(BWAPI::Position(10, 10), "Hello, World!\n");
+    BWAPI::Broodwar->drawTextScreen(BWAPI::Position(10, 10), "\n");
     Tools::DrawUnitCommands();
     Tools::DrawUnitBoundingBoxes();
 }

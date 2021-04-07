@@ -66,7 +66,6 @@ bool Tools::BuildBuilding(BWAPI::UnitType type)
 
     // Get a unit that we own that is of the given type so it can build
     // If we can't find a valid builder unit, then we have to cancel the building
-
     BWAPI::Unit builder = Tools::GetUnitOfType(builderType);
     if (!builder) { return false; }
 
@@ -167,32 +166,6 @@ int Tools::GetTotalSupply(bool inProgress)
     }
 
     return totalSupply;
-}
-
-//method used to check if we are at enemy base
-bool Tools::AtEnemyBase()
-{
-    BWAPI::UnitType enemySupplyType = BWAPI::Broodwar->enemy()->getRace().getSupplyProvider();
-
-    bool baseFound = false;
-
-    for (auto unit : BWAPI::Broodwar->enemy()->getUnits())
-    {
-        //checking if unit is enemy supply unit
-        BWAPI::UnitType enemyType = unit->getType();
-        if (enemyType == enemySupplyType) {
-            baseFound = true;
-            break;
-        }
-
-    }
-
-    if (baseFound) {
-        return true;
-    }
-    else {
-        return false;
-    }
 }
 
 void Tools::DrawUnitHealthBars()
