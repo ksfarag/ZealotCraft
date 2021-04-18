@@ -9,7 +9,6 @@ class StarterBot
     MapTools m_mapTools;
 
 	BWAPI::Unit workerScout;
-	std::deque<BWAPI::TilePosition> startLocations = BWAPI::Broodwar->getStartLocations();
 	BWAPI::Position enemyBasePos;
 
 public:

@@ -13,7 +13,7 @@ StarterBot::StarterBot()
 void StarterBot::onStart()
 {
     // Set our BWAPI options here    
-	BWAPI::Broodwar->setLocalSpeed(0); //same as "/speed 10" within game, each frame of the game takes the set number of MS in this function prackets
+	BWAPI::Broodwar->setLocalSpeed(20); //same as "/speed 10" within game, each frame of the game takes the set number of MS in this function prackets
     // if we setLocalSpeed(0), the game runs as fast as possible
     BWAPI::Broodwar->setFrameSkip(0); //skips rendering frames for more performance
     
@@ -122,23 +122,19 @@ bool StarterBot::attacking() { return false; }
 // Train more workers so we can gather more income
 void StarterBot::trainAdditionalWorkers()
 {
-    const BWAPI::UnitType workerType = BWAPI::Broodwar->self()->getRace().getWorker();
     const int workersWanted = 20;
-    const int workersOwned = Tools::CountUnitsOfType(workerType, BWAPI::Broodwar->self()->getUnits());
+    const int workersOwned = Tools::CountUnitsOfType(BWAPI::UnitTypes::Protoss_Probe, BWAPI::Broodwar->self()->getUnits());
     
-    // Pause training once at the start of the game to allow building a pylon when we have 8/9 workers
-    bool pauseTraining = false;
-    if (Tools::GetTotalSupply(true) == 18 && BWAPI::Broodwar->self()->supplyUsed() == 16) { pauseTraining = true; BWAPI::Broodwar->printf("Training paused!!!");}
-    else { pauseTraining = false; }
+
     
-    if (workersOwned < workersWanted && !pauseTraining)
+    if (workersOwned < workersWanted )
     {
         // get the unit pointer to my depot
         const BWAPI::Unit myDepot = Tools::GetDepot();
 
         // if we have a valid depot unit and it's currently not training something, train a worker
         // there is no reason for a bot to ever use the unit queueing system, it just wastes resources
-        if (myDepot && !myDepot->isTraining()) { myDepot->train(workerType); }
+        if (myDepot && !myDepot->isTraining()) { myDepot->train(BWAPI::UnitTypes::Protoss_Probe); }
     }
 }
 
@@ -164,7 +160,7 @@ void StarterBot::buildAdditionalSupply()
     // Get the amount of minerals farmed
     int mineralsCount = BWAPI::Broodwar->self()->minerals(); 
     // If we have a sufficient amount of supply, we don't need to do anything
-    if (unusedSupply >= 4 || mineralsCount < 101 ) { return; } // 2 here means 1 cause supply in game is * by 2
+    if (unusedSupply >= 6 || mineralsCount < 101 ) { return; } // 2 here means 1 cause supply in game is * by 2
 
     // Otherwise, we are going to build a supply provider
     const BWAPI::UnitType supplyProviderType = BWAPI::Broodwar->self()->getRace().getSupplyProvider();
@@ -199,25 +195,25 @@ void StarterBot::buildGateway()
 
 void StarterBot::scoutEnemy()
 {
+    // start scouting when our workers count is => 11
+    const int workersOwned = Tools::CountUnitsOfType(BWAPI::UnitTypes::Protoss_Probe, BWAPI::Broodwar->self()->getUnits());
+    if (workersOwned < 11) { return; }
+
     if(!workerScout->exists())
     {
-        //if scout died, we can assign another scout in next line
-        //TODO: limit scout production in future
+        // if scout died, assign new scout
         workerScout = Tools::GetUnitOfType(BWAPI::UnitTypes::Protoss_Probe);
     }
 
-    //searching all start positions
-    //startLocations = BWAPI::Broodwar->getStartLocations();
+    // searching all start positions
+    auto& startLocations = BWAPI::Broodwar->getStartLocations();
     for (BWAPI::TilePosition tilePos : startLocations)
     {
-        //if (BWAPI::Broodwar->isExplored(tilePos)) { continue; }
+        if (BWAPI::Broodwar->isExplored(tilePos)) { continue; }
         BWAPI::Position pos(tilePos);
-        //send scout to tilepos
+        // send scout to tilepos
         workerScout->move(pos);
-        //if the scout reach that position, remove it from the list to not rescout for this time
-        if (workerScout->getDistance(pos) < 200) { startLocations.pop_front(); }
-        //if list is empty, refill it with startign locations to re-scout 
-        if (startLocations.empty()) { startLocations = BWAPI::Broodwar->getStartLocations(); }
+        
 
         bool enemyFound = AtEnemyBase();
 
