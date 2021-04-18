@@ -52,6 +52,21 @@ BWAPI::Unit Tools::GetUnitOfType(BWAPI::UnitType type)
     return nullptr;
 }
 
+// same as GetUnitOfType function but it gesta worker that is very close from starting pos to avoid calling a scouting worker
+BWAPI::Unit Tools::GetWorker(BWAPI::UnitType type)
+{
+    BWAPI::Position startPos = Tools::GetDepot()->getPosition();
+    for (auto& unit : BWAPI::Broodwar->self()->getUnits())
+    {
+        
+        if (unit->getType() == type && unit->isCompleted() && (unit->getDistance(startPos)<200))
+        {
+            return unit;
+        }
+    }
+    return nullptr;
+}
+
 BWAPI::Unit Tools::GetDepot()
 {
     const BWAPI::UnitType depot = BWAPI::Broodwar->self()->getRace().getResourceDepot();
@@ -66,7 +81,7 @@ bool Tools::BuildBuilding(BWAPI::UnitType type)
 
     // Get a unit that we own that is of the given type so it can build
     // If we can't find a valid builder unit, then we have to cancel the building
-    BWAPI::Unit builder = Tools::GetUnitOfType(builderType);
+    BWAPI::Unit builder = Tools::GetWorker(builderType);
     if (!builder) { return false; }
 
     // Get a location that we want to build the building next to

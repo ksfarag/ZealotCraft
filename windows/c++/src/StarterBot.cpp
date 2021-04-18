@@ -6,14 +6,14 @@
 
 StarterBot::StarterBot()
 {
-    
+    workerScout = Tools::GetUnitOfType(BWAPI::UnitTypes::Protoss_Probe);
 }
 
 // Called when the bot starts!
 void StarterBot::onStart()
 {
     // Set our BWAPI options here    
-	BWAPI::Broodwar->setLocalSpeed(5); //same as "/speed 10" within game, each frame of the game takes the set number of MS in this function prackets
+	BWAPI::Broodwar->setLocalSpeed(0); //same as "/speed 10" within game, each frame of the game takes the set number of MS in this function prackets
     // if we setLocalSpeed(0), the game runs as fast as possible
     BWAPI::Broodwar->setFrameSkip(0); //skips rendering frames for more performance
     
@@ -35,6 +35,8 @@ void StarterBot::onFrame()
 {
     // Update our MapTools information
     m_mapTools.onFrame();
+
+    scoutEnemy();
 
     // Send our idle workers to mine minerals so they don't just stand there
     sendIdleWorkersToMinerals();
@@ -59,6 +61,12 @@ void StarterBot::onFrame()
 
     // Draw some relevent information to the screen to help us debug the bot
     drawDebugInformation();
+    debug();
+}
+
+void StarterBot::debug()
+{
+
 }
 
 // Send our idle workers to mine minerals so they don't just stand there
@@ -188,43 +196,42 @@ void StarterBot::buildGateway()
     }
 }
 
-/*
+
 void StarterBot::scoutEnemy()
 {
+    if(!workerScout->exists())
+    {
+        //if scout died, we can assign another scout in next line
+        //TODO: limit scout production in future
+        workerScout = Tools::GetUnitOfType(BWAPI::UnitTypes::Protoss_Probe);
+    }
 
     //searching all start positions
-    auto& startLocations = BWAPI::Broodwar->getStartLocations();
-    scouting = true;
-
+    //startLocations = BWAPI::Broodwar->getStartLocations();
     for (BWAPI::TilePosition tilePos : startLocations)
     {
-
-        if (BWAPI::Broodwar->isExplored(tilePos) || enemyFound) { continue; }
-
-        //going to location
+        //if (BWAPI::Broodwar->isExplored(tilePos)) { continue; }
         BWAPI::Position pos(tilePos);
-        scout->move(pos);
+        //send scout to tilepos
+        workerScout->move(pos);
+        //if the scout reach that position, remove it from the list to not rescout for this time
+        if (workerScout->getDistance(pos) < 200) { startLocations.pop_front(); }
+        //if list is empty, refill it with startign locations to re-scout 
+        if (startLocations.empty()) { startLocations = BWAPI::Broodwar->getStartLocations(); }
 
-        //checking if we are at enemy base
-        enemyFound = AtEnemyBase();
+        bool enemyFound = AtEnemyBase();
 
-        if (enemyFound) {
-
-            BWAPI::Broodwar->printf("Enemy Found");
-            enemyBasePosition = pos;
-
-            //moving unit back to home base
-            scout->move(BWAPI::Position(BWAPI::Broodwar->self()->getStartLocation()));
-            scouting = false;
+        if (enemyFound) 
+        {
+            enemyBasePos = pos;
         }
 
         break;
     }
 
 }
-*/
 
-// Helper funtion for scoutEnemy()
+
 bool StarterBot::AtEnemyBase()
 {
     BWAPI::UnitType enemySupplyType = BWAPI::Broodwar->enemy()->getRace().getSupplyProvider();
@@ -235,19 +242,14 @@ bool StarterBot::AtEnemyBase()
     {
         //checking if unit is enemy supply unit
         BWAPI::UnitType enemyType = unit->getType();
-        if (enemyType == enemySupplyType) {
+        if (enemyType == enemySupplyType) 
+        {
             baseFound = true;
             break;
         }
 
     }
-
-    if (baseFound) {
-        return true;
-    }
-    else {
-        return false;
-    }
+    return baseFound;
 }
 
 // Draw some relevent information to the screen to help us debug the bot

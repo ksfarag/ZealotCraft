@@ -8,6 +8,10 @@ class StarterBot
 {
     MapTools m_mapTools;
 
+	BWAPI::Unit workerScout;
+	std::deque<BWAPI::TilePosition> startLocations = BWAPI::Broodwar->getStartLocations();
+	BWAPI::Position enemyBasePos;
+
 public:
 
     StarterBot();
@@ -21,8 +25,10 @@ public:
 	void trainZealots();
     void buildAdditionalSupply();
 	void buildGateway();
+	void scoutEnemy();
 	bool AtEnemyBase();
     void drawDebugInformation();
+	void debug();
 
     // functions that are triggered by various BWAPI events from main.cpp
 	void onStart();
