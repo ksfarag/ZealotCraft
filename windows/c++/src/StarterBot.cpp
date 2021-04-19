@@ -100,7 +100,7 @@ void StarterBot::positionIdleZealots()
     for (auto& unit : myUnits)
     {
         if (unit->getType() == BWAPI::UnitTypes::Protoss_Zealot && unit->isCompleted()) { allZealots.insert(unit); }
-        if (unit->getType() == BWAPI::UnitTypes::Protoss_Zealot && unit->isCompleted() && unit->getDistance(Tools::GetDepot()) < 400) { baseZealots.insert(unit); }
+        if (unit->getType() == BWAPI::UnitTypes::Protoss_Zealot && unit->isCompleted() && unit->getDistance(Tools::GetDepot()) < 200) { baseZealots.insert(unit); }
         bool idelZealot = (unit->getType() == BWAPI::UnitTypes::Protoss_Zealot && (unit->isIdle() || unit->isHoldingPosition()));
         
 
@@ -123,8 +123,9 @@ void StarterBot::positionIdleZealots()
             }
         }
 
-        else if (!baseUnderattack() && readyForAttack() && baseZealots.size() >= 5)
+        else if (!baseUnderattack() && readyForAttack() && baseZealots.size() >= 7)
         {
+            attackZealots = allZealots;
             baseZealots.clear();
             attack();
         }
@@ -138,7 +139,7 @@ bool StarterBot::baseUnderattack()
     for (auto& unit : enemyUnits)
     {
         // if too close to our depot, return true
-        if (unit->getDistance(Tools::GetDepot()->getPosition()) < 300) { return true; }
+        if (unit->getDistance(Tools::GetDepot()->getPosition()) < 400) { return true; }
     }
     return false; 
 }
@@ -150,7 +151,6 @@ bool StarterBot::readyForAttack()
 
     if (allZealots.size() >= (currentSupply / 4)) 
     {
-        attackZealots = allZealots;
         return true; 
     }
     return false; 
@@ -159,31 +159,31 @@ bool StarterBot::readyForAttack()
 void StarterBot::attack() 
 {
     const BWAPI::Unitset& enemyUnits = BWAPI::Broodwar->enemy()->getUnits();
-    BWAPI::Unit enemyWorker = nullptr;
-    BWAPI::Unit enemyAttacker = nullptr;
-    BWAPI::Unit enemyBuilding = nullptr;
+    BWAPI::Unitset enemyWorkers;
+    BWAPI::Unitset enemyAttackers;
+    BWAPI::Unitset enemyBuildings;
     BWAPI::Unit otherEnemyUnit = Tools::GetClosestUnitTo(enemyBasePos, enemyUnits);
 
     for (auto& unit : enemyUnits)
     {
-        if (unit->getDistance(enemyBasePos) < 400 && unit->getType().isWorker())
+        if (unit->getDistance(enemyBasePos) < 700 && unit->getType().isWorker())
         {
-            BWAPI::Unit enemyWorker = unit;
+            enemyWorkers.insert(unit);
         }
-        if (unit->getDistance(enemyBasePos) < 400 && unit->isAttacking())
+        if (unit->getDistance(enemyBasePos) < 700 && unit->isAttacking())
         {
-            BWAPI::Unit enemyAttacker = unit;
+            enemyAttackers.insert(unit);
         }
-        if (unit->getDistance(enemyBasePos) < 400 && unit->getType().isBuilding())
+        if (unit->getDistance(enemyBasePos) < 700 && unit->getType().isBuilding())
         {
-            BWAPI::Unit enemyBuilding = unit;
+            enemyBuildings.insert(unit);
         }
     }
     
     for (auto& unit : attackZealots)
     {   
         if (baseUnderattack()) { unit->move(Tools::GetDepot()->getPosition()); }
-        // if not yet at enemy base and not beimg attacked nor attacking then go attack
+        // if not yet at enemy base and not being attacked nor attacking then go attack
         else if (!atEnemyBase(unit) && !unit->isUnderAttack() && !unit->isAttacking())
         {
             unit->attack(enemyBasePos);
@@ -191,9 +191,9 @@ void StarterBot::attack()
 
         else if (atEnemyBase(unit)) 
         {
-            if (enemyAttacker != nullptr) { unit->attack(enemyAttacker); }
-            else if (enemyWorker != nullptr) { unit->attack(enemyWorker); }
-            else if (enemyBuilding != nullptr) { unit->attack(enemyBuilding); }
+            if (!enemyAttackers.empty()) { unit->attack(Tools::GetClosestUnitTo(unit,enemyAttackers)); }
+            else if (!enemyWorkers.empty()) { unit->attack(Tools::GetClosestUnitTo(unit, enemyWorkers)); }
+            else if (!enemyBuildings.empty()) { unit->attack(Tools::GetClosestUnitTo(unit, enemyBuildings)); }
             else { unit->attack(otherEnemyUnit); }
 
         }
