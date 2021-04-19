@@ -9,7 +9,11 @@ class StarterBot
     MapTools m_mapTools;
 
 	BWAPI::Unit workerScout;
-	BWAPI::Position enemyBasePos;
+	BWAPI::Position nullPos = { -1,-1 };
+	BWAPI::Position enemyBasePos = nullPos;
+	BWAPI::Unitset allZealots; // all Zealots owned
+	BWAPI::Unitset baseZealots; // Zealots in our base
+	BWAPI::Unitset attackZealots; // Zealots ready to attack
 
 public:
 
@@ -18,14 +22,16 @@ public:
     // helper functions to get you started with bot programming and learn the API
     void sendIdleWorkersToMinerals();
 	void positionIdleZealots();
-	bool underattack();
-	bool attacking();
+	bool baseUnderattack();
+	bool readyForAttack();
+	void attack();
+	bool atEnemyBase(BWAPI::Unit unit);
     void trainAdditionalWorkers();
 	void trainZealots();
     void buildAdditionalSupply();
 	void buildGateway();
 	void scoutEnemy();
-	bool AtEnemyBase();
+	bool foundEnemyBase();
     void drawDebugInformation();
 	void debug();
 

@@ -13,7 +13,7 @@ StarterBot::StarterBot()
 void StarterBot::onStart()
 {
     // Set our BWAPI options here    
-	BWAPI::Broodwar->setLocalSpeed(20); //same as "/speed 10" within game, each frame of the game takes the set number of MS in this function prackets
+	BWAPI::Broodwar->setLocalSpeed(0); //same as "/speed 10" within game, each frame of the game takes the set number of MS in this function prackets
     // if we setLocalSpeed(0), the game runs as fast as possible
     BWAPI::Broodwar->setFrameSkip(0); //skips rendering frames for more performance
     
@@ -61,6 +61,7 @@ void StarterBot::onFrame()
 
     // Draw some relevent information to the screen to help us debug the bot
     drawDebugInformation();
+
     debug();
 }
 
@@ -94,30 +95,118 @@ void StarterBot::sendIdleWorkersToMinerals()
 // Position Zealots depending on current game state
 void StarterBot::positionIdleZealots()
 {
+    const BWAPI::Unitset& enemyUnits = BWAPI::Broodwar->enemy()->getUnits();
     const BWAPI::Unitset& myUnits = BWAPI::Broodwar->self()->getUnits();
     for (auto& unit : myUnits)
     {
+        if (unit->getType() == BWAPI::UnitTypes::Protoss_Zealot && unit->isCompleted()) { allZealots.insert(unit); }
+        if (unit->getType() == BWAPI::UnitTypes::Protoss_Zealot && unit->isCompleted() && unit->getDistance(Tools::GetDepot()) < 400) { baseZealots.insert(unit); }
         bool idelZealot = (unit->getType() == BWAPI::UnitTypes::Protoss_Zealot && (unit->isIdle() || unit->isHoldingPosition()));
-        //if not attacking or under attack stay in base to defend (patrol)
-        if (idelZealot && !underattack() && !attacking())
-        {
-            BWAPI::Position startPos = Tools::GetDepot()->getPosition();
-            unit->patrol(startPos);
+        
 
+
+        //if not attacking or under attack stay in Place
+        if (idelZealot && !baseUnderattack() && !readyForAttack())
+        {
+            unit->holdPosition();
         }
-        
-        //else if (underattack()) {defend}
-        
-        //else if (attack()) {move unit to attack}
+        //if base is underattack, defend
+        else if (baseUnderattack()) 
+        {
+            for (auto& unit : myUnits)
+            {
+                BWAPI::Unit closestEnemy = Tools::GetClosestUnitTo(Tools::GetDepot(), enemyUnits);
+                if (!unit->isAttacking() && closestEnemy->getDistance(Tools::GetDepot()) < 450)
+                {
+                    unit->attack(closestEnemy);
+                }
+            }
+        }
+
+        else if (!baseUnderattack() && readyForAttack() && baseZealots.size() >= 5)
+        {
+            baseZealots.clear();
+            attack();
+        }
     }
 }
 
 // Return true if base is under attack
-bool StarterBot::underattack() { return false; }
+bool StarterBot::baseUnderattack() 
+{
+    const BWAPI::Unitset& enemyUnits = BWAPI::Broodwar->enemy()->getUnits();
+    for (auto& unit : enemyUnits)
+    {
+        // if too close to our depot, return true
+        if (unit->getDistance(Tools::GetDepot()->getPosition()) < 300) { return true; }
+    }
+    return false; 
+}
 
-// Return true if attacking enemy base
-bool StarterBot::attacking() { return false; }
+// Return true if current Zealot count is 1/4 our supply
+bool StarterBot::readyForAttack() 
+{
+    int currentSupply = BWAPI::Broodwar->self()->supplyUsed()/2;
 
+    if (allZealots.size() >= (currentSupply / 4)) 
+    {
+        attackZealots = allZealots;
+        return true; 
+    }
+    return false; 
+}
+
+void StarterBot::attack() 
+{
+    const BWAPI::Unitset& enemyUnits = BWAPI::Broodwar->enemy()->getUnits();
+    BWAPI::Unit enemyWorker = nullptr;
+    BWAPI::Unit enemyAttacker = nullptr;
+    BWAPI::Unit enemyBuilding = nullptr;
+    BWAPI::Unit otherEnemyUnit = Tools::GetClosestUnitTo(enemyBasePos, enemyUnits);
+
+    for (auto& unit : enemyUnits)
+    {
+        if (unit->getDistance(enemyBasePos) < 400 && unit->getType().isWorker())
+        {
+            BWAPI::Unit enemyWorker = unit;
+        }
+        if (unit->getDistance(enemyBasePos) < 400 && unit->isAttacking())
+        {
+            BWAPI::Unit enemyAttacker = unit;
+        }
+        if (unit->getDistance(enemyBasePos) < 400 && unit->getType().isBuilding())
+        {
+            BWAPI::Unit enemyBuilding = unit;
+        }
+    }
+    
+    for (auto& unit : attackZealots)
+    {   
+        if (baseUnderattack()) { unit->move(Tools::GetDepot()->getPosition()); }
+        // if not yet at enemy base and not beimg attacked nor attacking then go attack
+        else if (!atEnemyBase(unit) && !unit->isUnderAttack() && !unit->isAttacking())
+        {
+            unit->attack(enemyBasePos);
+        }
+
+        else if (atEnemyBase(unit)) 
+        {
+            if (enemyAttacker != nullptr) { unit->attack(enemyAttacker); }
+            else if (enemyWorker != nullptr) { unit->attack(enemyWorker); }
+            else if (enemyBuilding != nullptr) { unit->attack(enemyBuilding); }
+            else { unit->attack(otherEnemyUnit); }
+
+        }
+
+    }
+}
+
+
+bool StarterBot::atEnemyBase(BWAPI::Unit unit)
+{
+    if (unit->getDistance(enemyBasePos) <= 50) { return true; }
+    return false;
+}
 
 // Train more workers so we can gather more income
 void StarterBot::trainAdditionalWorkers()
@@ -184,11 +273,7 @@ void StarterBot::buildGateway()
     if (gateWaysOwned < 2 && mineralsCount >= 151)
     {
         const bool startedBuilding = Tools::BuildBuilding(gateWay);
-
-        if (startedBuilding)
-        {
-            BWAPI::Broodwar->printf("Started Building %s", gateWay.getName().c_str());
-        }
+        if (startedBuilding) {BWAPI::Broodwar->printf("Started Building %s", gateWay.getName().c_str());}
     }
 }
 
@@ -213,13 +298,11 @@ void StarterBot::scoutEnemy()
         BWAPI::Position pos(tilePos);
         // send scout to tilepos
         workerScout->move(pos);
-        
 
-        bool enemyFound = AtEnemyBase();
-
-        if (enemyFound) 
+        if (foundEnemyBase() && enemyBasePos == nullPos)
         {
             enemyBasePos = pos;
+            BWAPI::Broodwar->printf("found enemy base");
         }
 
         break;
@@ -228,22 +311,12 @@ void StarterBot::scoutEnemy()
 }
 
 
-bool StarterBot::AtEnemyBase()
+bool StarterBot::foundEnemyBase()
 {
-    BWAPI::UnitType enemySupplyType = BWAPI::Broodwar->enemy()->getRace().getSupplyProvider();
-
     bool baseFound = false;
-
     for (auto unit : BWAPI::Broodwar->enemy()->getUnits())
     {
-        //checking if unit is enemy supply unit
-        BWAPI::UnitType enemyType = unit->getType();
-        if (enemyType == enemySupplyType) 
-        {
-            baseFound = true;
-            break;
-        }
-
+        if (unit->getType().isBuilding()) { baseFound = true; break; }
     }
     return baseFound;
 }
@@ -272,10 +345,13 @@ void StarterBot::onUnitMorph(BWAPI::Unit unit)
 // Called whenever a text is sent to the game by a user
 void StarterBot::onSendText(std::string text) 
 { 
-    if (text == "/map")
-    {
-        m_mapTools.toggleDraw();
-    }
+    if (text == "/map") { m_mapTools.toggleDraw(); }
+    // hotkeys to set game speed via chat
+    if (text == "`") { BWAPI::Broodwar->setLocalSpeed(0); }
+    if (text == "1") { BWAPI::Broodwar->setLocalSpeed(5); }
+    if (text == "2") { BWAPI::Broodwar->setLocalSpeed(20); }
+    if (text == "3") { BWAPI::Broodwar->setLocalSpeed(30); }
+    if (text == "4") { BWAPI::Broodwar->setLocalSpeed(50); }
 }
 
 // Called whenever a unit is created, with a pointer to the destroyed unit
