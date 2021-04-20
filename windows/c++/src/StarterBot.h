@@ -9,8 +9,10 @@ class StarterBot
     MapTools m_mapTools;
 
 	BWAPI::Unit workerScout;
+	BWAPI::Unit expansionUnit;
 	BWAPI::Position nullPos = { -1,-1 };
 	BWAPI::Position enemyBasePos = nullPos;
+	BWAPI::Position expansionBase = nullPos;
 	BWAPI::Unitset allZealots; // all Zealots owned
 	BWAPI::Unitset baseZealots; // Zealots in our base
 	BWAPI::Unitset attackZealots; // Zealots ready to attack
@@ -35,6 +37,8 @@ public:
 	bool foundEnemyBase();
     void drawDebugInformation();
 	void debug();
+	void expandBase();
+	BWAPI::Unit getExpansionUnit();
 
     // functions that are triggered by various BWAPI events from main.cpp
 	void onStart();
