@@ -30,6 +30,7 @@ public:
 	void trainZealots();
     void buildAdditionalSupply();
 	void buildGateway();
+	void buildCannon();
 	void scoutEnemy();
 	bool foundEnemyBase();
     void drawDebugInformation();

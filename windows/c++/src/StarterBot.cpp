@@ -12,22 +12,17 @@ StarterBot::StarterBot()
 // Called when the bot starts!
 void StarterBot::onStart()
 {
-    // Set our BWAPI options here    
 	BWAPI::Broodwar->setLocalSpeed(0); //same as "/speed 10" within game, each frame of the game takes the set number of MS in this function prackets
-    // if we setLocalSpeed(0), the game runs as fast as possible
     BWAPI::Broodwar->setFrameSkip(0); //skips rendering frames for more performance
-    
     BWAPI::Broodwar->enableFlag(BWAPI::Flag::UserInput); // Enable the flag that tells BWAPI top let users enter input while bot plays
     //enableFlag enables you to control units while bot is running
-    // Call MapTools OnStart
-    m_mapTools.onStart();
+    m_mapTools.onStart();// Call MapTools OnStart
 }
 
 // Called whenever the game ends and tells you if you won or not
 void StarterBot::onEnd(bool isWinner) 
 {
     std::cout << "We " << (isWinner ? "won!" : "lost!") << "\n";
-    //you can appened the game result to a file from this function to record win/lose statistics 
 }
 
 // Called on each frame of the game
@@ -38,28 +33,22 @@ void StarterBot::onFrame()
 
     scoutEnemy();
 
-    // Send our idle workers to mine minerals so they don't just stand there
     sendIdleWorkersToMinerals();
 
-    // Position idle zealots either for base defense or attacking enemy
     positionIdleZealots();
 
-    // Train more workers so we can gather more income
     trainAdditionalWorkers();
 
-    // Train more zealots
     trainZealots();
 
-    // Build more supply if we are going to run out soon
     buildAdditionalSupply();
 
-    // Build a gateway to produce zealots
     buildGateway();
 
-    // Draw unit health bars, which brood war unfortunately does not do
+    buildCannon();
+
     Tools::DrawUnitHealthBars();
 
-    // Draw some relevent information to the screen to help us debug the bot
     drawDebugInformation();
 
     debug();
@@ -162,7 +151,7 @@ void StarterBot::attack()
     BWAPI::Unitset enemyWorkers;
     BWAPI::Unitset enemyAttackers;
     BWAPI::Unitset enemyBuildings;
-    BWAPI::Unit otherEnemyUnit = Tools::GetClosestUnitTo(enemyBasePos, enemyUnits);
+    BWAPI::Unitset otherEnemyUnits;
 
     for (auto& unit : enemyUnits)
     {
@@ -170,13 +159,17 @@ void StarterBot::attack()
         {
             enemyWorkers.insert(unit);
         }
-        if (unit->getDistance(enemyBasePos) < 700 && unit->isAttacking())
+        if (unit->getDistance(enemyBasePos) < 700 && unit->canAttack() && !unit->getType().isWorker())
         {
             enemyAttackers.insert(unit);
         }
         if (unit->getDistance(enemyBasePos) < 700 && unit->getType().isBuilding())
         {
             enemyBuildings.insert(unit);
+        }
+        if (unit->getDistance(enemyBasePos) < 700)
+        {
+            otherEnemyUnits.insert(unit);
         }
     }
     
@@ -194,7 +187,7 @@ void StarterBot::attack()
             if (!enemyAttackers.empty()) { unit->attack(Tools::GetClosestUnitTo(unit,enemyAttackers)); }
             else if (!enemyWorkers.empty()) { unit->attack(Tools::GetClosestUnitTo(unit, enemyWorkers)); }
             else if (!enemyBuildings.empty()) { unit->attack(Tools::GetClosestUnitTo(unit, enemyBuildings)); }
-            else { unit->attack(otherEnemyUnit); }
+            else { unit->attack(Tools::GetClosestUnitTo(unit, otherEnemyUnits)); }
 
         }
 
@@ -204,7 +197,7 @@ void StarterBot::attack()
 
 bool StarterBot::atEnemyBase(BWAPI::Unit unit)
 {
-    if (unit->getDistance(enemyBasePos) <= 50) { return true; }
+    if (unit->getDistance(enemyBasePos) <= 200) { return true; }
     return false;
 }
 
@@ -252,31 +245,43 @@ void StarterBot::buildAdditionalSupply()
     if (unusedSupply >= 6 || mineralsCount < 101 ) { return; } // 2 here means 1 cause supply in game is * by 2
 
     // Otherwise, we are going to build a supply provider
-    const BWAPI::UnitType supplyProviderType = BWAPI::Broodwar->self()->getRace().getSupplyProvider();
-
-    const bool startedBuilding = Tools::BuildBuilding(supplyProviderType);
+    const bool startedBuilding = Tools::BuildBuilding(BWAPI::UnitTypes::Protoss_Pylon);
     if (startedBuilding)
     {
-        BWAPI::Broodwar->printf("Started Building %s", supplyProviderType.getName().c_str());
+        BWAPI::Broodwar->printf("Started Building %s", BWAPI::UnitTypes::Protoss_Pylon.getName().c_str());
     }
 }
 
-// Build a gateway
 void StarterBot::buildGateway() 
 {
-    // Get the amount of minerals farmed
-    int mineralsCount = BWAPI::Broodwar->self()->minerals();
-    const BWAPI::UnitType gateWay = BWAPI::UnitTypes::Protoss_Gateway;
+    int mineralsCount = BWAPI::Broodwar->self()->minerals(); // Get the amount of minerals farmed
 
-    int gateWaysOwned = Tools::CountUnitsOfType(gateWay, BWAPI::Broodwar->self()->getUnits());
+    int gateWaysOwned = Tools::CountUnitsOfType(BWAPI::UnitTypes::Protoss_Gateway, BWAPI::Broodwar->self()->getUnits());
 
     if (gateWaysOwned < 2 && mineralsCount >= 151)
     {
-        const bool startedBuilding = Tools::BuildBuilding(gateWay);
-        if (startedBuilding) {BWAPI::Broodwar->printf("Started Building %s", gateWay.getName().c_str());}
+        const bool startedBuilding = Tools::BuildBuilding(BWAPI::UnitTypes::Protoss_Gateway);
+        if (startedBuilding) {BWAPI::Broodwar->printf("Started Building %s", BWAPI::UnitTypes::Protoss_Gateway.getName().c_str());}
     }
 }
 
+void StarterBot::buildCannon() 
+{
+    const BWAPI::Unitset& myUnits = BWAPI::Broodwar->self()->getUnits();
+    int gatewaysOwned = Tools::CountUnitsOfType(BWAPI::UnitTypes::Protoss_Gateway, myUnits);
+    int forgeOwned = Tools::CountUnitsOfType(BWAPI::UnitTypes::Protoss_Forge, myUnits);
+    int cannonsOwned = Tools::CountUnitsOfType(BWAPI::UnitTypes::Protoss_Photon_Cannon, myUnits);
+    if (gatewaysOwned >= 1 && forgeOwned < 1)
+    {
+        const bool startedBuilding = Tools::BuildBuilding(BWAPI::UnitTypes::Protoss_Forge);
+        if (startedBuilding) { BWAPI::Broodwar->printf("Started Building %s", BWAPI::UnitTypes::Protoss_Forge.getName().c_str()); }
+    }
+    if (forgeOwned == 1 && cannonsOwned <= 3) 
+    {
+        const bool startedBuilding = Tools::BuildBuilding(BWAPI::UnitTypes::Protoss_Photon_Cannon);
+        if (startedBuilding) { BWAPI::Broodwar->printf("Started Building %s", BWAPI::UnitTypes::Protoss_Photon_Cannon.getName().c_str()); }
+    }
+}
 
 void StarterBot::scoutEnemy()
 {
@@ -290,8 +295,8 @@ void StarterBot::scoutEnemy()
         workerScout = Tools::GetUnitOfType(BWAPI::UnitTypes::Protoss_Probe);
     }
 
-    // searching all start positions
-    auto& startLocations = BWAPI::Broodwar->getStartLocations();
+
+    auto& startLocations = BWAPI::Broodwar->getStartLocations(); // searching all start positions
     for (BWAPI::TilePosition tilePos : startLocations)
     {
         if (BWAPI::Broodwar->isExplored(tilePos)) { continue; }
@@ -309,7 +314,6 @@ void StarterBot::scoutEnemy()
     }
 
 }
-
 
 bool StarterBot::foundEnemyBase()
 {

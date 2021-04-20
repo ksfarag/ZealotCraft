@@ -5,8 +5,7 @@ BWAPI::Unit Tools::GetClosestUnitTo(BWAPI::Position p, const BWAPI::Unitset& uni
     BWAPI::Unit closestUnit = nullptr;
 
     for (auto& u : units)
-    {
-        // old if statment that has a bug: if (!closestUnit || u->getDistance(p) < u->getDistance(closestUnit))
+    {        
         if (!closestUnit || u->getDistance(p) < closestUnit->getDistance(p))
         {
             closestUnit = u;
@@ -52,14 +51,14 @@ BWAPI::Unit Tools::GetUnitOfType(BWAPI::UnitType type)
     return nullptr;
 }
 
-// same as GetUnitOfType function but it gesta worker that is very close from starting pos to avoid calling a scouting worker
+// same as GetUnitOfType function but it gets a worker that is close from starting pos to avoid calling a scouting worker
 BWAPI::Unit Tools::GetWorker(BWAPI::UnitType type)
 {
     BWAPI::Position startPos = Tools::GetDepot()->getPosition();
     for (auto& unit : BWAPI::Broodwar->self()->getUnits())
     {
         
-        if (unit->getType() == type && unit->isCompleted() && (unit->getDistance(startPos)<200))
+        if (unit->getType() == type && unit->isCompleted() && (unit->getDistance(startPos)<250))
         {
             return unit;
         }
@@ -125,12 +124,12 @@ void Tools::DrawUnitCommands()
 
 void Tools::DrawUnitBoundingBoxes()
 {
-    for (auto& unit : BWAPI::Broodwar->getAllUnits())
+    /*for (auto& unit : BWAPI::Broodwar->getAllUnits())
     {
         BWAPI::Position topLeft(unit->getLeft(), unit->getTop());
         BWAPI::Position bottomRight(unit->getRight(), unit->getBottom());
         BWAPI::Broodwar->drawBoxMap(topLeft, bottomRight, BWAPI::Colors::White);
-    }
+    }*/
 }
 
 void Tools::SmartRightClick(BWAPI::Unit unit, BWAPI::Unit target)
