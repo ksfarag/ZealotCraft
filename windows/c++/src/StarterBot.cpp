@@ -45,6 +45,7 @@ void StarterBot::onFrame()
 
     buildGateway();
 
+    //Build Photon Cannon to defend base against flying units and ground units
     buildCannon();
 
     Tools::DrawUnitHealthBars();
@@ -281,6 +282,67 @@ void StarterBot::buildCannon()
         const bool startedBuilding = Tools::BuildBuilding(BWAPI::UnitTypes::Protoss_Photon_Cannon);
         if (startedBuilding) { BWAPI::Broodwar->printf("Started Building %s", BWAPI::UnitTypes::Protoss_Photon_Cannon.getName().c_str()); }
     }
+
+    //Other Cannon method which uses the location of pylon to build cannon since they are required to be built within pylon's matrix
+    /*int gateWaysOwned = Tools::CountUnitsOfType(BWAPI::UnitTypes::Protoss_Gateway, BWAPI::Broodwar->self()->getUnits());
+    int numberOfForges = Tools::CountUnitsOfType(BWAPI::UnitTypes::Protoss_Forge, BWAPI::Broodwar->self()->getUnits());
+
+    int numberOfCannons = Tools::CountUnitsOfType(BWAPI::UnitTypes::Protoss_Photon_Cannon, BWAPI::Broodwar->self()->getUnits());
+    int mineralsCount = BWAPI::Broodwar->self()->minerals();
+
+    if (numberOfCannons < 3 && mineralsCount > 150 && gateWaysOwned > 1 && !baseUnderattack()) {
+
+        //getting builder
+        BWAPI::Unit builder = Tools::GetWorker(BWAPI::UnitTypes::Protoss_Probe);
+        if (!builder) { return; }
+
+        //getting location of pylons
+        const BWAPI::Unitset& myUnits = BWAPI::Broodwar->self()->getUnits();
+        for (auto& unit : myUnits)
+        {
+
+            if (unit->getType() == BWAPI::UnitTypes::Protoss_Pylon)
+            {
+                //get building location near pylon
+                int maxBuildRange = 64;
+                BWAPI::TilePosition buildPos = BWAPI::Broodwar->getBuildLocation(BWAPI::UnitTypes::Protoss_Photon_Cannon, unit->getTilePosition(), maxBuildRange, false);
+
+                BWAPI::Position exactPosition(buildPos);
+                //checking if location has pylon power
+                if (BWAPI::Broodwar->hasPowerPrecise(exactPosition, BWAPI::UnitTypes::Protoss_Photon_Cannon) && buildPos.isValid() && BWAPI::Broodwar->canBuildHere(buildPos, BWAPI::UnitTypes::Protoss_Photon_Cannon, builder))
+                {
+
+                    if (numberOfForges < 1) {
+
+                        bool startedBuilding = builder->build(BWAPI::UnitTypes::Protoss_Forge, buildPos);
+
+                        if (startedBuilding)
+                        {
+                            BWAPI::Broodwar->printf("Started Building %s", BWAPI::UnitTypes::Protoss_Forge.getName().c_str());
+                        }
+
+                    }
+                    else if (numberOfCannons < 3) {
+
+                        const bool startedBuilding = builder->build(BWAPI::UnitTypes::Protoss_Photon_Cannon, buildPos);
+
+                        if (startedBuilding)
+                        {
+                            BWAPI::Broodwar->printf("Started Building %s", BWAPI::UnitTypes::Protoss_Photon_Cannon.getName().c_str());
+                        }
+
+                    }
+                    else {
+                        continue;
+                    }
+
+                }
+
+
+            }
+        }
+
+    }*/
 }
 
 void StarterBot::scoutEnemy()
