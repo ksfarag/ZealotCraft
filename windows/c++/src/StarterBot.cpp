@@ -70,8 +70,8 @@ void StarterBot::sendIdleWorkersToMinerals()
     const BWAPI::Unitset& myUnits = BWAPI::Broodwar->self()->getUnits();
     for (auto& unit : myUnits)
     {
-        // Check the unit type, if it is an idle worker, then we want to send it somewhere
-        if ((unit->getType().isWorker() && unit->isIdle())|| unit->getType().isWorker() && unit->isStuck())
+        bool idle = ((unit->getType().isWorker() && unit->isIdle()) || (unit->getType().isWorker() && unit->isStuck()));
+        if (idle)
         {
             // Player starting position (depot position)
             BWAPI::Position startPos = Tools::GetDepot()->getPosition();
@@ -88,6 +88,13 @@ void StarterBot::sendIdleWorkersToMinerals()
 void StarterBot::positionIdleZealots()
 {
     const BWAPI::Unitset& enemyUnits = BWAPI::Broodwar->enemy()->getUnits();
+    BWAPI::Unitset closeEnemyUnits;
+
+    for (auto& unit : enemyUnits)
+    {   //if unit is close to base or to expansion, add it to the close enemy list
+        if (unit->getDistance(Tools::GetDepot())<600 || unit->getDistance(Tools::GetNewDepot()) < 600) { closeEnemyUnits.insert(unit); }
+    }
+
     const BWAPI::Unitset& myUnits = BWAPI::Broodwar->self()->getUnits();
     for (auto& unit : myUnits)
     {
@@ -96,28 +103,28 @@ void StarterBot::positionIdleZealots()
         bool idelZealot = (unit->getType() == BWAPI::UnitTypes::Protoss_Zealot && (unit->isIdle() || unit->isHoldingPosition()));
         
         //if not attacking or under attack stay in Place
-        if (idelZealot && !baseUnderattack() && !readyForAttack())
+        if (idelZealot && !baseUnderattack() && !readyForAttack() && !expansionUnderattack())
         {
             unit->holdPosition();
         }
-        //if base is underattack, defend
-        else if (baseUnderattack()) 
+        //if base or expansion is underattack, defend
+        else if (baseUnderattack() || expansionUnderattack())
         {
-            for (auto& unit : myUnits)
+            BWAPI::Unit closestEnemy = Tools::GetClosestUnitTo(unit, closeEnemyUnits);
+            //if there is enemy close to base or expansion, attack it
+            if (!unit->isAttacking() &&( closestEnemy->getDistance(Tools::GetDepot()) < 600 || closestEnemy->getDistance(Tools::GetNewDepot()) < 600))
             {
-                BWAPI::Unit closestEnemy = Tools::GetClosestUnitTo(Tools::GetDepot(), enemyUnits);
-                if (!unit->isAttacking() && closestEnemy->getDistance(Tools::GetDepot()) < 400)
-                {
-                    unit->attack(closestEnemy);
-                }
-                else if (!unit->isAttacking() && closestEnemy->getDistance(Tools::GetDepot()) > 400)
-                {
-                    unit->move(Tools::GetDepot()->getPosition()); 
-                }
+                unit->attack(closestEnemy);
             }
+            // else if enemy runnuing, don't chance and go back to base
+            else if (closestEnemy->getDistance(Tools::GetDepot()) > 600 && closestEnemy->getDistance(Tools::GetNewDepot()) > 600)
+            {
+                unit->move(Tools::GetDepot()->getPosition()); 
+            }
+            
         }
 
-        else if (!baseUnderattack() && readyForAttack() && baseZealots.size() >= 7)
+        else if (!baseUnderattack() && !expansionUnderattack() && readyForAttack() && baseZealots.size() >= 7)
         {
             attackZealots = allZealots;
             baseZealots.clear();
@@ -132,17 +139,18 @@ bool StarterBot::baseUnderattack()
     const BWAPI::Unitset& enemyUnits = BWAPI::Broodwar->enemy()->getUnits();
     for (auto& unit : enemyUnits)
     {
-        if (unit->getDistance(Tools::GetDepot()->getPosition()) < 400) { return true; }
+        if (unit->getDistance(Tools::GetDepot()->getPosition()) < 600) { return true; }
     }
     return false; 
 }
 
 bool StarterBot::expansionUnderattack()
 {
+    if (Tools::GetNewDepot() == nullptr) { return false; }
     const BWAPI::Unitset& enemyUnits = BWAPI::Broodwar->enemy()->getUnits();
     for (auto& unit : enemyUnits)
     {
-        if (unit->getDistance(naturalExpansionPos) < 400) { return true; }
+        if (unit->getDistance(Tools::GetNewDepot()) < 600) { return true; }
     }
     return false;
 }
@@ -166,7 +174,7 @@ void StarterBot::attack()
     BWAPI::Unitset enemyAttackers;
     BWAPI::Unitset enemyBuildings;
     BWAPI::Unitset otherEnemyUnits;
-
+    attackPerformed = true;
     for (auto& unit : enemyUnits)
     {
         if (unit->getDistance(enemyBasePos) < 700 && unit->getType().isWorker())
@@ -189,7 +197,11 @@ void StarterBot::attack()
     
     for (auto& unit : attackZealots)
     {   
-        if (baseUnderattack()) { unit->move(Tools::GetDepot()->getPosition()); }
+        // if base or expansion is under attack, retreat
+        if (baseUnderattack() || expansionUnderattack()) 
+        {
+            unit->move(Tools::GetDepot()->getPosition()); 
+        }
         // if not yet at enemy base and not being attacked nor attacking then go attack
         else if (!atEnemyBase(unit) && !unit->isUnderAttack() && !unit->isAttacking())
         {
@@ -211,7 +223,7 @@ void StarterBot::attack()
 
 bool StarterBot::atEnemyBase(BWAPI::Unit unit)
 {
-    if (unit->getDistance(enemyBasePos) <= 200) { return true; }
+    if (unit->getDistance(enemyBasePos) <= 300) { return true; }
     return false;
 }
 
@@ -292,7 +304,7 @@ void StarterBot::buildCannon()
     }
     if (forgeOwned >= 1 && cannonsOwned < 2) 
     {
-        const bool startedBuilding = Tools::buildBuilding(BWAPI::UnitTypes::Protoss_Photon_Cannon, BWAPI::Broodwar->self()->getStartLocation(), 10);//, Tools::GetDepot()->getTilePosition());
+        const bool startedBuilding = Tools::buildBuilding(BWAPI::UnitTypes::Protoss_Photon_Cannon, BWAPI::Broodwar->self()->getStartLocation(), 10);
         if (startedBuilding) { BWAPI::Broodwar->printf("Started Building %s", BWAPI::UnitTypes::Protoss_Photon_Cannon.getName().c_str()); }
     }
 }
@@ -303,7 +315,7 @@ void StarterBot::getExpansionLoc()
     int nexusCount = Tools::CountUnitsOfType(BWAPI::UnitTypes::Protoss_Nexus, BWAPI::Broodwar->self()->getUnits());
     allMinerals = BWAPI::Broodwar->getMinerals();
     const int workersOwned = Tools::CountUnitsOfType(BWAPI::UnitTypes::Protoss_Probe, BWAPI::Broodwar->self()->getUnits());
-    if (workersOwned < 19) { return; }
+    if (workersOwned < 20 || attackPerformed == false) { return; }
     if (enemyBasePos != nullPos) 
     {
         for (auto& mineral : allMinerals) 

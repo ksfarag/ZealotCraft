@@ -19,6 +19,7 @@ class StarterBot
 	BWAPI::Unitset baseZealots; // Zealots in our base
 	BWAPI::Unitset attackZealots; // Zealots ready to attack
 	BWAPI::Unitset allMinerals;
+	bool attackPerformed = false;
 
 public:
 

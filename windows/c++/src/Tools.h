@@ -13,6 +13,7 @@ namespace Tools
     BWAPI::Unit GetUnitOfType(BWAPI::UnitType type);
     BWAPI::Unit GetWorker(BWAPI::UnitType type);
     BWAPI::Unit GetDepot();
+    BWAPI::Unit GetNewDepot();
 
     bool BuildBuilding(BWAPI::UnitType type);
     bool buildBuilding(BWAPI::UnitType type, BWAPI::TilePosition desiredPos, int maxBuildRange);

@@ -87,6 +87,21 @@ BWAPI::Unit Tools::GetDepot()
     return GetUnitOfType(depot);
 }
 
+BWAPI::Unit Tools::GetNewDepot()
+{
+    const BWAPI::UnitType depot = BWAPI::Broodwar->self()->getRace().getResourceDepot();
+    for (auto& unit : BWAPI::Broodwar->self()->getUnits())
+    {
+        // if the unit is of the correct type & not the main depo, return it
+        if (unit->getType() == depot && unit->isCompleted() && unit!= GetDepot())
+        {
+            return unit;
+        }
+    }
+    //else, return a nullptr
+    return nullptr;
+}
+
 // Attempt tp construct a building of a given type 
 bool Tools::BuildBuilding(BWAPI::UnitType type)
 {
