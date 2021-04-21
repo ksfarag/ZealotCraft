@@ -21,6 +21,21 @@ BWAPI::Unit Tools::GetClosestUnitTo(BWAPI::Unit unit, const BWAPI::Unitset& unit
     return GetClosestUnitTo(unit->getPosition(), units);
 }
 
+BWAPI::Unit Tools::farmFar(BWAPI::Position p, const BWAPI::Unitset& units)
+{
+    BWAPI::Unit closestUnit = nullptr;
+
+    for (auto& u : units)
+    {
+        if (!closestUnit || u->getDistance(p) < u->getDistance(closestUnit))
+        {
+            closestUnit = u;
+        }
+    }
+
+    return closestUnit;
+}
+
 int Tools::CountUnitsOfType(BWAPI::UnitType type, const BWAPI::Unitset& units)
 {
     int sum = 0;
@@ -87,9 +102,26 @@ bool Tools::BuildBuilding(BWAPI::UnitType type)
     BWAPI::TilePosition desiredPos = BWAPI::Broodwar->self()->getStartLocation();
 
     // Ask BWAPI for a building location near the desired position for the type
-    int maxBuildRange = 64;
+    int maxBuildRange = 28;
     bool buildingOnCreep = type.requiresCreep();
-    BWAPI::TilePosition buildPos = BWAPI::Broodwar->getBuildLocation(type, desiredPos, maxBuildRange, buildingOnCreep);
+    BWAPI::TilePosition buildPos = BWAPI::Broodwar->getBuildLocation(type, desiredPos, maxBuildRange);
+    return builder->build(type, buildPos);
+}
+
+// slightly modified version of the above function with a custom range and desiredPos (as an argument)
+bool Tools::buildBuilding(BWAPI::UnitType type, BWAPI::TilePosition desiredPos, int maxBuildRange)
+{
+    // Get the type of unit that is required to build the desired building
+    BWAPI::UnitType builderType = type.whatBuilds().first;
+
+    // Get a unit that we own that is of the given type so it can build
+    // If we can't find a valid builder unit, then we have to cancel the building
+    BWAPI::Unit builder = Tools::GetWorker(builderType);
+    if (!builder) { return false; }
+
+    // Ask BWAPI for a building location near the desired position for the type
+    bool buildingOnCreep = type.requiresCreep();
+    BWAPI::TilePosition buildPos = BWAPI::Broodwar->getBuildLocation(type, desiredPos, maxBuildRange);
     return builder->build(type, buildPos);
 }
 

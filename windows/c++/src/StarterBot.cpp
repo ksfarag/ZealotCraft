@@ -7,7 +7,6 @@
 StarterBot::StarterBot()
 {
     workerScout = Tools::GetUnitOfType(BWAPI::UnitTypes::Protoss_Probe);
-    expansionUnit = getExpansionUnit();
 }
 
 // Called when the bot starts!
@@ -17,7 +16,8 @@ void StarterBot::onStart()
     BWAPI::Broodwar->setFrameSkip(0); //skips rendering frames for more performance
     BWAPI::Broodwar->enableFlag(BWAPI::Flag::UserInput); // Enable the flag that tells BWAPI top let users enter input while bot plays
     //enableFlag enables you to control units while bot is running
-    m_mapTools.onStart();// Call MapTools OnStart
+    m_mapTools.onStart();
+
 }
 
 // Called whenever the game ends and tells you if you won or not
@@ -32,8 +32,6 @@ void StarterBot::onFrame()
     // Update our MapTools information
     m_mapTools.onFrame();
 
-    scoutEnemy();
-
     sendIdleWorkersToMinerals();
 
     positionIdleZealots();
@@ -46,10 +44,11 @@ void StarterBot::onFrame()
 
     buildGateway();
 
-    //Build Photon Cannon to defend base against flying units and ground units
     buildCannon();
 
-    expandBase();
+    getExpansionLoc();
+
+    scoutEnemy();
 
     Tools::DrawUnitHealthBars();
 
@@ -59,25 +58,25 @@ void StarterBot::onFrame()
 }
 
 void StarterBot::debug()
-{
-
+{ 
+    int k = workerScout->getDistance(Tools::GetDepot());
+    auto& pos = workerScout->getPosition();
+    BWAPI::Broodwar->drawCircleMap(pos, 8, BWAPI::Colors::Red, true);
 }
 
 // Send our idle workers to mine minerals so they don't just stand there
 void StarterBot::sendIdleWorkersToMinerals()
 {
-    // Let's send all of our starting workers to the closest mineral to them
-    // First we need to loop over all of the units that we (BWAPI::Broodwar->self()) own
     const BWAPI::Unitset& myUnits = BWAPI::Broodwar->self()->getUnits();
     for (auto& unit : myUnits)
     {
         // Check the unit type, if it is an idle worker, then we want to send it somewhere
-        if (unit->getType().isWorker() && unit->isIdle() && !unit->isHoldingPosition())
+        if ((unit->getType().isWorker() && unit->isIdle())|| unit->getType().isWorker() && unit->isStuck())
         {
             // Player starting position (depot position)
             BWAPI::Position startPos = Tools::GetDepot()->getPosition();
             // Get the closest mineral to this worker unit
-            BWAPI::Unit closestMineralToBase = Tools::GetClosestUnitTo(startPos, BWAPI::Broodwar->getMinerals());
+            BWAPI::Unit closestMineralToBase = Tools::GetClosestUnitTo(startPos, allMinerals);
 
             // If a valid mineral was found, right click it with the unit in order to start harvesting
             if (closestMineralToBase) { unit->rightClick(closestMineralToBase); }
@@ -96,8 +95,6 @@ void StarterBot::positionIdleZealots()
         if (unit->getType() == BWAPI::UnitTypes::Protoss_Zealot && unit->isCompleted() && unit->getDistance(Tools::GetDepot()) < 200) { baseZealots.insert(unit); }
         bool idelZealot = (unit->getType() == BWAPI::UnitTypes::Protoss_Zealot && (unit->isIdle() || unit->isHoldingPosition()));
         
-
-
         //if not attacking or under attack stay in Place
         if (idelZealot && !baseUnderattack() && !readyForAttack())
         {
@@ -109,9 +106,13 @@ void StarterBot::positionIdleZealots()
             for (auto& unit : myUnits)
             {
                 BWAPI::Unit closestEnemy = Tools::GetClosestUnitTo(Tools::GetDepot(), enemyUnits);
-                if (!unit->isAttacking() && closestEnemy->getDistance(Tools::GetDepot()) < 450)
+                if (!unit->isAttacking() && closestEnemy->getDistance(Tools::GetDepot()) < 400)
                 {
                     unit->attack(closestEnemy);
+                }
+                else if (!unit->isAttacking() && closestEnemy->getDistance(Tools::GetDepot()) > 400)
+                {
+                    unit->move(Tools::GetDepot()->getPosition()); 
                 }
             }
         }
@@ -131,10 +132,19 @@ bool StarterBot::baseUnderattack()
     const BWAPI::Unitset& enemyUnits = BWAPI::Broodwar->enemy()->getUnits();
     for (auto& unit : enemyUnits)
     {
-        // if too close to our depot, return true
         if (unit->getDistance(Tools::GetDepot()->getPosition()) < 400) { return true; }
     }
     return false; 
+}
+
+bool StarterBot::expansionUnderattack()
+{
+    const BWAPI::Unitset& enemyUnits = BWAPI::Broodwar->enemy()->getUnits();
+    for (auto& unit : enemyUnits)
+    {
+        if (unit->getDistance(naturalExpansionPos) < 400) { return true; }
+    }
+    return false;
 }
 
 // Return true if current Zealot count is 1/4 our supply
@@ -280,86 +290,58 @@ void StarterBot::buildCannon()
         const bool startedBuilding = Tools::BuildBuilding(BWAPI::UnitTypes::Protoss_Forge);
         if (startedBuilding) { BWAPI::Broodwar->printf("Started Building %s", BWAPI::UnitTypes::Protoss_Forge.getName().c_str()); }
     }
-    if (forgeOwned == 1 && cannonsOwned <= 3) 
+    if (forgeOwned >= 1 && cannonsOwned < 2) 
     {
-        const bool startedBuilding = Tools::BuildBuilding(BWAPI::UnitTypes::Protoss_Photon_Cannon);
+        const bool startedBuilding = Tools::buildBuilding(BWAPI::UnitTypes::Protoss_Photon_Cannon, BWAPI::Broodwar->self()->getStartLocation(), 10);//, Tools::GetDepot()->getTilePosition());
         if (startedBuilding) { BWAPI::Broodwar->printf("Started Building %s", BWAPI::UnitTypes::Protoss_Photon_Cannon.getName().c_str()); }
     }
+}
 
-    /*
-    //Other Cannon method which uses the location of pylon to build cannon since they are required to be built within pylon's matrix
-    int gateWaysOwned = Tools::CountUnitsOfType(BWAPI::UnitTypes::Protoss_Gateway, BWAPI::Broodwar->self()->getUnits());
-    int numberOfForges = Tools::CountUnitsOfType(BWAPI::UnitTypes::Protoss_Forge, BWAPI::Broodwar->self()->getUnits());
-
-    int numberOfCannons = Tools::CountUnitsOfType(BWAPI::UnitTypes::Protoss_Photon_Cannon, BWAPI::Broodwar->self()->getUnits());
-    int mineralsCount = BWAPI::Broodwar->self()->minerals();
-
-    if (numberOfCannons < 3 && mineralsCount > 150 && gateWaysOwned > 1 && !baseUnderattack()) {
-
-        //getting builder
-        BWAPI::Unit builder = Tools::GetWorker(BWAPI::UnitTypes::Protoss_Probe);
-        if (!builder) { return; }
-
-        //getting location of pylons
-        const BWAPI::Unitset& myUnits = BWAPI::Broodwar->self()->getUnits();
-        for (auto& unit : myUnits)
+// builds a new nexus and records the new expansion location
+void StarterBot::getExpansionLoc() 
+{
+    int nexusCount = Tools::CountUnitsOfType(BWAPI::UnitTypes::Protoss_Nexus, BWAPI::Broodwar->self()->getUnits());
+    allMinerals = BWAPI::Broodwar->getMinerals();
+    const int workersOwned = Tools::CountUnitsOfType(BWAPI::UnitTypes::Protoss_Probe, BWAPI::Broodwar->self()->getUnits());
+    if (workersOwned < 19) { return; }
+    if (enemyBasePos != nullPos) 
+    {
+        for (auto& mineral : allMinerals) 
         {
-
-            if (unit->getType() == BWAPI::UnitTypes::Protoss_Pylon)
-            {
-                //get building location near pylon
-                int maxBuildRange = 150;
-                BWAPI::TilePosition buildPos = BWAPI::Broodwar->getBuildLocation(BWAPI::UnitTypes::Protoss_Photon_Cannon, unit->getTilePosition(), maxBuildRange, false);
-
-                BWAPI::Position exactPosition(buildPos);
-                //checking if location has pylon power
-                if (BWAPI::Broodwar->hasPowerPrecise(exactPosition, BWAPI::UnitTypes::Protoss_Photon_Cannon) && buildPos.isValid() && BWAPI::Broodwar->canBuildHere(buildPos, BWAPI::UnitTypes::Protoss_Photon_Cannon, builder))
-                {
-
-                    if (numberOfForges < 1) {
-
-                        bool startedBuilding = builder->build(BWAPI::UnitTypes::Protoss_Forge, buildPos);
-
-                        if (startedBuilding)
-                        {
-                            BWAPI::Broodwar->printf("Started Building %s", BWAPI::UnitTypes::Protoss_Forge.getName().c_str());
-                        }
-
-                    }
-                    else if (numberOfCannons < 3) {
-
-                        const bool startedBuilding = builder->build(BWAPI::UnitTypes::Protoss_Photon_Cannon, buildPos);
-
-                        if (startedBuilding)
-                        {
-                            BWAPI::Broodwar->printf("Started Building %s", BWAPI::UnitTypes::Protoss_Photon_Cannon.getName().c_str());
-                        }
-
-                    }
-                    else {
-                        continue;
-                    }
-
-                }
-
-
-            }
+            if (nexusCount == 2) { break; }
+            if (mineral->getDistance(Tools::GetDepot()) < 235) { allMinerals.erase(mineral); }
+        }
+    }
+    int mineralsCount = BWAPI::Broodwar->self()->minerals();
+    if (mineralsCount > 400 && nexusCount < 2)
+    {
+        BWAPI::Unit closestMineralToBase = Tools::GetClosestUnitTo(Tools::GetDepot()->getPosition(), allMinerals);
+        BWAPI::TilePosition tp = closestMineralToBase->getTilePosition();
+        BWAPI::Position pos(tp);
+        const bool startedBuilding = Tools::buildBuilding(BWAPI::UnitTypes::Protoss_Nexus, tp, 30);
+        naturalExpansionPos = pos;
+        naturalExpansionTP = tp;
+        if (Tools::CountUnitsOfType(BWAPI::UnitTypes::Protoss_Nexus, BWAPI::Broodwar->self()->getUnits()) == 2)
+        {
+            allMinerals = BWAPI::Broodwar->getMinerals();
         }
 
-    } */
+    }
 }
+
 
 void StarterBot::scoutEnemy()
 {
-    // start scouting when our workers count is => 11
+    // start scouting when our workers count is => 9
     const int workersOwned = Tools::CountUnitsOfType(BWAPI::UnitTypes::Protoss_Probe, BWAPI::Broodwar->self()->getUnits());
-    if (workersOwned < 11) { return; }
+    if (workersOwned < 9) { return; }
 
     if(!workerScout->exists())
     {
         // if scout died, assign new scout
         workerScout = Tools::GetUnitOfType(BWAPI::UnitTypes::Protoss_Probe);
     }
+
 
     auto& startLocations = BWAPI::Broodwar->getStartLocations(); // searching all start positions
     for (BWAPI::TilePosition tilePos : startLocations)
@@ -380,82 +362,6 @@ void StarterBot::scoutEnemy()
 
 }
 
-void StarterBot::expandBase()
-{
-
-    const int numberOfGateways = Tools::CountUnitsOfType(BWAPI::UnitTypes::Protoss_Gateway, BWAPI::Broodwar->self()->getUnits());
-
-    if (numberOfGateways > 1 && expansionBase == nullPos)
-    {
-        // Getting all minerals
-        BWAPI::Unitset allMinerals = BWAPI::Broodwar->getMinerals();
-
-        BWAPI::Position startPos = Tools::GetDepot()->getPosition();
-
-        BWAPI::Unit closestUnit = nullptr;
-
-        int maxRange = 350;
-
-        //getting closest mineral to nexus but not within starting location
-        for (auto& mineral : allMinerals)
-        {
-
-            if (!closestUnit || (mineral->getDistance(startPos) < closestUnit->getDistance(startPos) && mineral->getDistance(startPos) > maxRange))
-            {
-                closestUnit = mineral;
-            }
-
-        }
-
-        //moving to minerals
-        expansionUnit->move(closestUnit->getPosition());
-
-        BWAPI::Broodwar->printf("Building Expansion Base");
-
-        expansionBase = closestUnit->getPosition();
-
-        //making scout stay in position
-        expansionUnit->holdPosition(true);
-
-
-    }
-    else {
-        //build nexus
-        int mineralsCount = BWAPI::Broodwar->self()->minerals();
-        int numberOfNexus = Tools::CountUnitsOfType(BWAPI::UnitTypes::Protoss_Nexus, BWAPI::Broodwar->self()->getUnits());
-
-        if (mineralsCount > 400 && numberOfNexus < 2) {
-
-            int maxBuildRange = 100;
-            BWAPI::TilePosition buildPos = BWAPI::Broodwar->getBuildLocation(BWAPI::UnitTypes::Protoss_Nexus, expansionUnit->getTilePosition(), maxBuildRange, false);
-
-            const bool startedBuilding = expansionUnit->build(BWAPI::UnitTypes::Protoss_Nexus, buildPos);
-
-            if (startedBuilding)
-            {
-                BWAPI::Broodwar->printf("Started Building %s", BWAPI::UnitTypes::Protoss_Nexus.getName().c_str());
-            }
-
-        }
-
-    }
-
-}
-
-
-BWAPI::Unit StarterBot::getExpansionUnit()
-{
-    for (auto& unit : BWAPI::Broodwar->self()->getUnits())
-    {
-        // if the unit is of the correct type, and it actually has been constructed, return it
-        if (unit->getType() == BWAPI::UnitTypes::Protoss_Probe && unit->isCompleted() && unit->getID() != workerScout->getID())
-        {
-            return unit;
-        }
-    }
-
-}
-
 bool StarterBot::foundEnemyBase()
 {
     bool baseFound = false;
@@ -465,6 +371,7 @@ bool StarterBot::foundEnemyBase()
     }
     return baseFound;
 }
+
 
 // Draw some relevent information to the screen to help us debug the bot
 void StarterBot::drawDebugInformation()
