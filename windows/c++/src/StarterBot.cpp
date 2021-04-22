@@ -12,7 +12,7 @@ StarterBot::StarterBot()
 // Called when the bot starts!
 void StarterBot::onStart()
 {
-	BWAPI::Broodwar->setLocalSpeed(0); //same as "/speed 10" within game, each frame of the game takes the set number of MS in this function prackets
+	BWAPI::Broodwar->setLocalSpeed(10); //same as "/speed 10" within game, each frame of the game takes the set number of MS in this function prackets
     BWAPI::Broodwar->setFrameSkip(0); //skips rendering frames for more performance
     BWAPI::Broodwar->enableFlag(BWAPI::Flag::UserInput); // Enable the flag that tells BWAPI top let users enter input while bot plays
     //enableFlag enables you to control units while bot is running
@@ -36,20 +36,15 @@ void StarterBot::onFrame()
 
     positionIdleZealots();
 
-    if (!expandingBase) { //we want to slow down on using resources when we are ready to build or next base
+    trainAdditionalWorkers();
 
-        trainAdditionalWorkers();
+    trainZealots();
 
-        trainZealots();
+    buildAdditionalSupply();
 
-        buildAdditionalSupply();
+    buildGateway();
 
-        buildGateway();
-
-        buildCannon();
-
-    }
-    
+    buildCannon();
 
     getExpansionLoc();
 
@@ -82,8 +77,9 @@ void StarterBot::sendIdleWorkersToMinerals()
         {
             // Player starting position (depot position)
             BWAPI::Position startPos = Tools::GetDepot()->getPosition();
-            // Get the closest mineral to this worker unit
-            BWAPI::Unit closestMineralToBase = Tools::GetClosestUnitTo(startPos, allMinerals);
+
+            // Get the closest mineral to this worker unit and away from enemy base
+            BWAPI::Unit closestMineralToBase = closestSafeUnit(startPos, allMinerals);
 
             // If a valid mineral was found, right click it with the unit in order to start harvesting
             if (closestMineralToBase) { unit->rightClick(closestMineralToBase); }
@@ -99,18 +95,24 @@ void StarterBot::positionIdleZealots()
 
     for (auto& unit : enemyUnits)
     {   //if unit is close to base or to expansion, add it to the close enemy list
-        if (unit->getDistance(Tools::GetDepot())<600 || unit->getDistance(Tools::GetNewDepot()) < 600) { closeEnemyUnits.insert(unit); }
+        if (unit->getDistance(Tools::GetDepot()) < 600 || unit->getDistance(Tools::GetNewDepot()) < 600) { closeEnemyUnits.insert(unit); }
     }
 
     const BWAPI::Unitset& myUnits = BWAPI::Broodwar->self()->getUnits();
+
     for (auto& unit : myUnits)
     {
         if (unit->getType() == BWAPI::UnitTypes::Protoss_Zealot && unit->isCompleted()) { allZealots.insert(unit); }
-        if (unit->getType() == BWAPI::UnitTypes::Protoss_Zealot && unit->isCompleted() && unit->getDistance(Tools::GetDepot()) < 200) { baseZealots.insert(unit); }
+        if (unit->getType() == BWAPI::UnitTypes::Protoss_Zealot && unit->isCompleted() && (unit->getDistance(Tools::GetDepot()) < 1024 || unit->getDistance(Tools::GetNewDepot()) < 1024) ) { baseZealots.insert(unit); }
         bool idelZealot = (unit->getType() == BWAPI::UnitTypes::Protoss_Zealot && (unit->isIdle() || unit->isHoldingPosition()));
         
-        //if not attacking or under attack stay in Place
-        if (idelZealot && !baseUnderattack() && !expansionUnderattack())
+        if (!baseUnderattack() && !expansionUnderattack() && baseZealots.size() >= sizeZealotGroups)
+        {
+            attackZealots = allZealots;
+            baseZealots.clear();
+            attack();
+
+        }else if (idelZealot && !baseUnderattack() && !expansionUnderattack())  //if not attacking or under attack stay in Place
         {
             unit->holdPosition();
         }
@@ -129,13 +131,6 @@ void StarterBot::positionIdleZealots()
                 unit->move(Tools::GetDepot()->getPosition()); 
             }
             
-        }
-
-        else if (!baseUnderattack() && !expansionUnderattack() && baseZealots.size() >= sizeZealotGroups)
-        {
-            attackZealots = allZealots;
-            baseZealots.clear();
-            attack();
         }
     }
 }
@@ -237,7 +232,7 @@ bool StarterBot::atEnemyBase(BWAPI::Unit unit)
 bool StarterBot::closeToEnemyBase(BWAPI::Unit myUnit)
 {
     bool closeToEnemy = false;
-    BWAPI::Unitset allRangeUnits = myUnit->getUnitsInRadius(900);
+    BWAPI::Unitset allRangeUnits = myUnit->getUnitsInRadius(1024);
 
     for (auto unit : allRangeUnits)
     {
@@ -245,6 +240,23 @@ bool StarterBot::closeToEnemyBase(BWAPI::Unit myUnit)
     }
 
     return closeToEnemy;
+}
+
+//method to get closest safe unit away from enemy base
+BWAPI::Unit StarterBot::closestSafeUnit(BWAPI::Position p, const BWAPI::Unitset& units)
+{
+    BWAPI::Unit closestUnit = nullptr;
+
+    for (auto& u : units)
+    {
+        if ( (!closestUnit && !closeToEnemyBase(u)) || ( (u->getDistance(p) < closestUnit->getDistance(p)) && !closeToEnemyBase(u)) )
+        {
+            closestUnit = u;
+        }
+    }
+
+    return closestUnit;
+
 }
 
 // Train more workers so we can gather more income
@@ -255,7 +267,7 @@ void StarterBot::trainAdditionalWorkers()
     
 
     
-    if (workersOwned < workersWanted )
+    if (workersOwned < workersWanted && !expandingBase)
     {
         // get the unit pointer to my depot
         const BWAPI::Unit myDepot = Tools::GetDepot();
@@ -350,6 +362,9 @@ void StarterBot::buildCannon()
     int gatewaysOwned = Tools::CountUnitsOfType(BWAPI::UnitTypes::Protoss_Gateway, myUnits);
     int forgeOwned = Tools::CountUnitsOfType(BWAPI::UnitTypes::Protoss_Forge, myUnits);
     int cannonsOwned = Tools::CountUnitsOfType(BWAPI::UnitTypes::Protoss_Photon_Cannon, myUnits);
+
+    if (expandingBase) { return; }
+
     if (gatewaysOwned >= 1 && forgeOwned < 1)
     {
         const bool startedBuilding = Tools::BuildBuilding(BWAPI::UnitTypes::Protoss_Forge);
@@ -384,7 +399,8 @@ void StarterBot::getExpansionLoc()
     
     if (mineralsCount > 400 && nexusCount < 2) {
 
-        BWAPI::Unit closestMineralToBase = Tools::GetClosestUnitTo(Tools::GetDepot()->getPosition(), allMinerals);
+        //closest unit to home base but safely away from enemy base
+        BWAPI::Unit closestMineralToBase = closestSafeUnit(Tools::GetDepot()->getPosition(), allMinerals);
         BWAPI::TilePosition tp = closestMineralToBase->getTilePosition();
         BWAPI::Position pos(tp);
         const bool startedBuilding = Tools::buildBuilding(BWAPI::UnitTypes::Protoss_Nexus, tp, 30);
@@ -468,7 +484,7 @@ void StarterBot::analyzeScout()
         maxNumGateways = 3;
         sizeZealotGroups = 7;
     }
-    else if (numberOfGroundUnits > 15) {
+    else if (numberOfGroundUnits > 13) {
         sizeZealotGroups = 5;
     }
 

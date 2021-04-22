@@ -44,6 +44,7 @@ public:
 	void buildGateway();
 	void buildGatewayAtExpansionBase();
 	bool closeToEnemyBase(BWAPI::Unit);
+	BWAPI::Unit closestSafeUnit(BWAPI::Position p, const BWAPI::Unitset& units);
 	void buildCannon();
 	void getExpansionLoc();
 	void scoutEnemy();
