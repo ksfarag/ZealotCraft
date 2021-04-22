@@ -110,7 +110,7 @@ void StarterBot::positionIdleZealots()
         bool idelZealot = (unit->getType() == BWAPI::UnitTypes::Protoss_Zealot && (unit->isIdle() || unit->isHoldingPosition()));
         
         //if not attacking or under attack stay in Place
-        if (idelZealot && !baseUnderattack() && !readyForAttack() && !expansionUnderattack())
+        if (idelZealot && !baseUnderattack() && !expansionUnderattack())
         {
             unit->holdPosition();
         }
@@ -131,7 +131,7 @@ void StarterBot::positionIdleZealots()
             
         }
 
-        else if (!baseUnderattack() && !expansionUnderattack() && readyForAttack() && baseZealots.size() >= 7)
+        else if (!baseUnderattack() && !expansionUnderattack() && baseZealots.size() >= sizeZealotGroups)
         {
             attackZealots = allZealots;
             baseZealots.clear();
@@ -234,6 +234,19 @@ bool StarterBot::atEnemyBase(BWAPI::Unit unit)
     return false;
 }
 
+bool StarterBot::closeToEnemyBase(BWAPI::Unit myUnit)
+{
+    bool closeToEnemy = false;
+    BWAPI::Unitset allRangeUnits = myUnit->getUnitsInRadius(900);
+
+    for (auto unit : allRangeUnits)
+    {
+        if (unit->getType().isBuilding() && myUnit->getPlayer()->isEnemy(unit->getPlayer()) ) { closeToEnemy = true; break; }
+    }
+
+    return closeToEnemy;
+}
+
 // Train more workers so we can gather more income
 void StarterBot::trainAdditionalWorkers()
 {
@@ -291,7 +304,7 @@ void StarterBot::buildGateway()
 
     int gateWaysOwned = Tools::CountUnitsOfType(BWAPI::UnitTypes::Protoss_Gateway, BWAPI::Broodwar->self()->getUnits());
 
-    if (gateWaysOwned < 2 && mineralsCount >= 151)
+    if (gateWaysOwned < maxNumGateways && mineralsCount >= 151)
     {
         const bool startedBuilding = Tools::BuildBuilding(BWAPI::UnitTypes::Protoss_Gateway);
         if (startedBuilding) {BWAPI::Broodwar->printf("Started Building %s", BWAPI::UnitTypes::Protoss_Gateway.getName().c_str());}
@@ -319,7 +332,7 @@ void StarterBot::buildGatewayAtExpansionBase()
         if (startedBuilding) { BWAPI::Broodwar->printf("Building at Expansion Base Pylon", BWAPI::UnitTypes::Protoss_Pylon.getName().c_str()); }
 
     }
-    else if (numberOfPylons > 0 && numberOfGateways < 2) {
+    else if (numberOfPylons > 0 && numberOfGateways < maxNumGateways) {
         //build gateways
         const bool startedBuilding = Tools::buildBuilding(BWAPI::UnitTypes::Protoss_Gateway, nexusTile, 28);
 
@@ -342,7 +355,7 @@ void StarterBot::buildCannon()
         const bool startedBuilding = Tools::BuildBuilding(BWAPI::UnitTypes::Protoss_Forge);
         if (startedBuilding) { BWAPI::Broodwar->printf("Started Building %s", BWAPI::UnitTypes::Protoss_Forge.getName().c_str()); }
     }
-    if (forgeOwned >= 1 && cannonsOwned < 2) 
+    if (forgeOwned >= 1 && cannonsOwned < maxNumCannons) 
     {
         const bool startedBuilding = Tools::buildBuilding(BWAPI::UnitTypes::Protoss_Photon_Cannon, BWAPI::Broodwar->self()->getStartLocation(), 10);
         if (startedBuilding) { BWAPI::Broodwar->printf("Started Building %s", BWAPI::UnitTypes::Protoss_Photon_Cannon.getName().c_str()); }
@@ -416,10 +429,47 @@ void StarterBot::scoutEnemy()
         if (foundEnemyBase() && enemyBasePos == nullPos)
         {
             enemyBasePos = pos;
+            //adjusting our build order according to what the scout observed
+            analyzeScout();
             BWAPI::Broodwar->printf("found enemy base");
         }
 
         break;
+    }
+
+}
+
+void StarterBot::analyzeScout()
+{
+    BWAPI::Unitset allVisibleEnemyUnits = BWAPI::Broodwar->enemy()->getUnits();
+
+    int numberOfFlyingUnits = 0;
+    int numberOfGroundUnits = 0;
+
+    for (auto unit : allVisibleEnemyUnits)
+    {
+        if (unit->isFlying() && unit->canAttack()) //flying unit
+        {
+            numberOfFlyingUnits += 1;
+        }
+        else if (unit->canAttack()) // ground unit
+        {
+            numberOfGroundUnits += 1;
+        }
+
+    }
+
+    //adjusting our build order accordingly
+    if (numberOfFlyingUnits > 3) {
+        maxNumCannons = 4;
+    }
+
+    if (numberOfGroundUnits > 25) {
+        maxNumGateways = 3;
+        sizeZealotGroups = 7;
+    }
+    else if (numberOfGroundUnits > 15) {
+        sizeZealotGroups = 5;
     }
 
 }

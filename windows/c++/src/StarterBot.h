@@ -21,6 +21,9 @@ class StarterBot
 	BWAPI::Unitset baseZealots; // Zealots in our base
 	BWAPI::Unitset attackZealots; // Zealots ready to attack
 	BWAPI::Unitset allMinerals;
+	int maxNumGateways = 2;
+	int maxNumCannons = 2;
+	int sizeZealotGroups = 4;
 
 
 public:
@@ -40,9 +43,11 @@ public:
     void buildAdditionalSupply();
 	void buildGateway();
 	void buildGatewayAtExpansionBase();
+	bool closeToEnemyBase(BWAPI::Unit);
 	void buildCannon();
 	void getExpansionLoc();
 	void scoutEnemy();
+	void analyzeScout();
 	bool foundEnemyBase();
     void drawDebugInformation();
 	void debug();
