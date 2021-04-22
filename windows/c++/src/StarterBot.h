@@ -12,14 +12,16 @@ class StarterBot
 	BWAPI::Position nullPos = { -1,-1 };
 	BWAPI::Position enemyBasePos = nullPos;
 	BWAPI::Position startingPos;
-	BWAPI::Position naturalExpansionPos = startingPos;
+	BWAPI::Position naturalExpansionPos = nullPos;
 	BWAPI::TilePosition naturalExpansionTP;//Tile Position of the natural Expansion site
 	BWAPI::TilePosition startingTP;// = BWAPI::Broodwar->self()->getStartLocation();
+	bool expandingBase = false;
+	bool attackPerformed = false;
 	BWAPI::Unitset allZealots; // all Zealots owned
 	BWAPI::Unitset baseZealots; // Zealots in our base
 	BWAPI::Unitset attackZealots; // Zealots ready to attack
 	BWAPI::Unitset allMinerals;
-	bool attackPerformed = false;
+
 
 public:
 
@@ -37,6 +39,7 @@ public:
 	void trainZealots();
     void buildAdditionalSupply();
 	void buildGateway();
+	void buildGatewayAtExpansionBase();
 	void buildCannon();
 	void getExpansionLoc();
 	void scoutEnemy();

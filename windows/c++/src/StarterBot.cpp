@@ -36,19 +36,26 @@ void StarterBot::onFrame()
 
     positionIdleZealots();
 
-    trainAdditionalWorkers();
+    if (!expandingBase) { //we want to slow down on using resources when we are ready to build or next base
 
-    trainZealots();
+        trainAdditionalWorkers();
 
-    buildAdditionalSupply();
+        trainZealots();
 
-    buildGateway();
+        buildAdditionalSupply();
 
-    buildCannon();
+        buildGateway();
+
+        buildCannon();
+
+    }
+    
 
     getExpansionLoc();
 
     scoutEnemy();
+
+    buildGatewayAtExpansionBase();
 
     Tools::DrawUnitHealthBars();
 
@@ -291,6 +298,39 @@ void StarterBot::buildGateway()
     }
 }
 
+void StarterBot::buildGatewayAtExpansionBase()
+{
+    BWAPI::Unit expansionNexus = Tools::GetNewDepot();
+
+    if (!expansionNexus) { return; }
+
+    //checking number of gateways and pylons at expansion base
+    BWAPI::Unitset expansionUnits = expansionNexus->getUnitsInRadius(350);
+
+    int numberOfPylons = Tools::CountUnitsOfType(BWAPI::UnitTypes::Protoss_Pylon, expansionUnits);
+    int numberOfGateways = Tools::CountUnitsOfType(BWAPI::UnitTypes::Protoss_Gateway, expansionUnits);
+    BWAPI::TilePosition nexusTile = expansionNexus->getTilePosition();
+
+    if (numberOfPylons < 1) {
+        //build pylon
+        
+        bool startedBuilding = Tools::buildBuilding(BWAPI::UnitTypes::Protoss_Pylon,nexusTile,28);
+
+        if (startedBuilding) { BWAPI::Broodwar->printf("Building at Expansion Base Pylon", BWAPI::UnitTypes::Protoss_Pylon.getName().c_str()); }
+
+    }
+    else if (numberOfPylons > 0 && numberOfGateways < 2) {
+        //build gateways
+        const bool startedBuilding = Tools::buildBuilding(BWAPI::UnitTypes::Protoss_Gateway, nexusTile, 28);
+
+        if (startedBuilding) { BWAPI::Broodwar->printf("Building at Expansion Base Gateway", BWAPI::UnitTypes::Protoss_Gateway.getName().c_str()); }
+
+    }
+
+
+
+}
+
 void StarterBot::buildCannon() 
 {
     const BWAPI::Unitset& myUnits = BWAPI::Broodwar->self()->getUnits();
@@ -315,18 +355,22 @@ void StarterBot::getExpansionLoc()
     int nexusCount = Tools::CountUnitsOfType(BWAPI::UnitTypes::Protoss_Nexus, BWAPI::Broodwar->self()->getUnits());
     allMinerals = BWAPI::Broodwar->getMinerals();
     const int workersOwned = Tools::CountUnitsOfType(BWAPI::UnitTypes::Protoss_Probe, BWAPI::Broodwar->self()->getUnits());
-    if (workersOwned < 20 || attackPerformed == false) { return; }
+    int mineralsCount = BWAPI::Broodwar->self()->minerals();
+
+    if (workersOwned < 10 ) { return; }
     if (enemyBasePos != nullPos) 
     {
+        //letting system know we are expanding to stop building for a short moment to gather minerals for nexus
+        expandingBase = true;
         for (auto& mineral : allMinerals) 
         {
             if (nexusCount == 2) { break; }
-            if (mineral->getDistance(Tools::GetDepot()) < 235) { allMinerals.erase(mineral); }
+            if (mineral->getDistance(Tools::GetDepot()) < 300) { allMinerals.erase(mineral); }
         }
     }
-    int mineralsCount = BWAPI::Broodwar->self()->minerals();
-    if (mineralsCount > 400 && nexusCount < 2)
-    {
+    
+    if (mineralsCount > 400 && nexusCount < 2) {
+
         BWAPI::Unit closestMineralToBase = Tools::GetClosestUnitTo(Tools::GetDepot()->getPosition(), allMinerals);
         BWAPI::TilePosition tp = closestMineralToBase->getTilePosition();
         BWAPI::Position pos(tp);
@@ -336,14 +380,20 @@ void StarterBot::getExpansionLoc()
         if (Tools::CountUnitsOfType(BWAPI::UnitTypes::Protoss_Nexus, BWAPI::Broodwar->self()->getUnits()) == 2)
         {
             allMinerals = BWAPI::Broodwar->getMinerals();
-        }
-
+        } 
+       
     }
+
+    if (nexusCount > 1) {
+        expandingBase = false;
+    }
+   
 }
 
 
 void StarterBot::scoutEnemy()
 {
+
     // start scouting when our workers count is => 9
     const int workersOwned = Tools::CountUnitsOfType(BWAPI::UnitTypes::Protoss_Probe, BWAPI::Broodwar->self()->getUnits());
     if (workersOwned < 9) { return; }
