@@ -440,36 +440,45 @@ void StarterBot::buildCyberCore()
     }
 }
 
+//method to build gateways and 2 cannons at the Natural Expansion location
 void StarterBot::buildExpansionBuildings()
 {
-
     BWAPI::Unit expansionNexus = Tools::GetNewDepot();
     if (expansionNexus == nullptr) { return; }
     int mineralsCount = BWAPI::Broodwar->self()->minerals();
-    //checking number of gateways and pylons at expansion base
+    //checking number of pylons at expansion base
     BWAPI::Unitset expansionUnits = expansionNexus->getUnitsInRadius(350);
-
     int numberOfPylons = Tools::CountUnitsOfType(BWAPI::UnitTypes::Protoss_Pylon, expansionUnits);
-    int numberOfGateways = Tools::CountUnitsOfType(BWAPI::UnitTypes::Protoss_Gateway, expansionUnits);
+
+    const BWAPI::Unitset& myUnits = BWAPI::Broodwar->self()->getUnits();
+    int numberOfGateways = Tools::CountUnitsOfType(BWAPI::UnitTypes::Protoss_Gateway, myUnits);
+    int cannonsOwned = Tools::CountUnitsOfType(BWAPI::UnitTypes::Protoss_Photon_Cannon, myUnits);
+
     BWAPI::TilePosition nexusTile = expansionNexus->getTilePosition();
 
+    //build pylon
     if (numberOfPylons < 1) {
-        //build pylon
         bool startedBuilding = Tools::buildBuilding(BWAPI::UnitTypes::Protoss_Pylon, nexusTile, 28);
         if (startedBuilding) { BWAPI::Broodwar->printf("Building at Expansion Base Pylon", BWAPI::UnitTypes::Protoss_Pylon.getName().c_str()); }
     }
-    else if (numberOfPylons > 0 && numberOfGateways < 2) {
-        //build gateways
+    //build gateways
+    else if (numberOfPylons > 0 && numberOfGateways < 4) {
         const bool startedBuilding = Tools::buildBuilding(BWAPI::UnitTypes::Protoss_Gateway, nexusTile, 28);
         if (startedBuilding) { BWAPI::Broodwar->printf("Building at Expansion Base Gateway", BWAPI::UnitTypes::Protoss_Gateway.getName().c_str()); }
     }
 
-    else if (mineralsCount > 900 && numberOfGateways < 4)
+    //build 2 extra gateways if we have alot of unused minerals
+    else if (mineralsCount > 900 && numberOfGateways < 6)
     {
-        //build gateways
         const bool startedBuilding = Tools::buildBuilding(BWAPI::UnitTypes::Protoss_Gateway, nexusTile, 28);
         if (startedBuilding) { BWAPI::Broodwar->printf("Building at Expansion Base Gateway", BWAPI::UnitTypes::Protoss_Gateway.getName().c_str()); }
 
+    }
+        //build 2 cannons at expansion
+    if (numberOfGateways > 3 && cannonsOwned < 4)
+    {
+        const bool startedBuilding = Tools::buildBuilding(BWAPI::UnitTypes::Protoss_Photon_Cannon, Tools::GetNewDepot()->getTilePosition(), 10);
+        if (startedBuilding) { BWAPI::Broodwar->printf("Started Building %s", BWAPI::UnitTypes::Protoss_Photon_Cannon.getName().c_str()); }
     }
 
 }
