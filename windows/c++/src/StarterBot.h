@@ -13,11 +13,10 @@ class StarterBot
 	BWAPI::Position enemyBasePos = nullPos;
 	BWAPI::Position startingPos;
 	BWAPI::Position naturalExpansionPos = startingPos;
-	BWAPI::TilePosition naturalExpansionTP;//Tile Position of the natural Expansion site
-	BWAPI::TilePosition startingTP;// = BWAPI::Broodwar->self()->getStartLocation();
-	BWAPI::Unitset allAttackers; // all Zealots owned
-	BWAPI::Unitset baseAttackers; // Zealots in our base
-	//BWAPI::Unitset attackers; // Units ready to attack
+	BWAPI::TilePosition naturalExpansionTP;  //Tile Position of the natural Expansion site
+	BWAPI::TilePosition startingTP;         
+	BWAPI::Unitset allAttackers;             // all attacking units owned
+	BWAPI::Unitset baseAttackers;            // attacking units sitting in our base
 	BWAPI::Unitset allMinerals;
 	bool attackPerformed = false;
 

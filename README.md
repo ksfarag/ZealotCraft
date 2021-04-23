@@ -1,13 +1,19 @@
-A README to sort steps/tasks by order 
+# STARTcraft
 
-Start the game by sending probes to minerals and produce new workers/probes right away
+Get started with Starcraft AI Development as fast as possible. 
 
-Once reached a total of 8 probes, send the one of the probes to build a pylon then go mine with others
+New to Starfcraft or AI Programming? Watch the tutorial video: https://www.youtube.com/watch?v=czhNqUxmLks
 
-Once reached 8 probes && got a total of 150 minerals or more, BUILD A GATEWAY
+Currently Supported (more coming soon):
+* Windows / C++ Development using BWAPI
 
-Once reached 10 probes, use one probe to build a second GATEWAY and a second pylon
+# Setup Instructions:
 
-Send that same probe to start the first SCOUT to find enemy base
+## Windows / C++
 
-At all times, at least 1 Zealot should be produced per gateway
+StartCraft comes with a StarterBot written in C++ using BWAPI 4.4.0. This repo comes with BWAPI, and uses Injectory to launch Starcraft with BWAPI, so Chaoslauncher is not required.
+
+1. Download / Clone this repo to your computer
+2. Download and unzip [Starcraft Broodwar 1.16.1](http://www.cs.mun.ca/~dchurchill/startcraft/scbw_bwapi440.zip) to the included `windows/starcraft` folder
+3. Run `windows/RunC++BotAndStarcraft.bat` which will launch the bot executable and Starcraft / BWAPI
+4. Open `windows/c++/visualstudio/StartCraft.sln` in Visual Studio 2019 to modify / recompile the code

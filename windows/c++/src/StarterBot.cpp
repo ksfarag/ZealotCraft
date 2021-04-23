@@ -15,7 +15,6 @@ void StarterBot::onStart()
 	BWAPI::Broodwar->setLocalSpeed(0); //same as "/speed 10" within game, each frame of the game takes the set number of MS in this function prackets
     BWAPI::Broodwar->setFrameSkip(0); //skips rendering frames for more performance
     BWAPI::Broodwar->enableFlag(BWAPI::Flag::UserInput); // Enable the flag that tells BWAPI top let users enter input while bot plays
-    //enableFlag enables you to control units while bot is running
     m_mapTools.onStart();
 
 }
@@ -107,6 +106,7 @@ void StarterBot::sendIdleWorkersToMinerals()
     }
 }
 
+// function that sends few workers to gather gas
 void StarterBot::sendWorkersToGas()
 {
     int gasFarmers = 0;
@@ -132,9 +132,11 @@ void StarterBot::sendWorkersToGas()
 // Position Zealots depending on current game state
 void StarterBot::positionIdleZealots()
 {
-    const BWAPI::Unitset& enemyUnits = BWAPI::Broodwar->enemy()->getUnits();
-    BWAPI::Unitset closeEnemyUnits;
 
+    const BWAPI::Unitset& enemyUnits = BWAPI::Broodwar->enemy()->getUnits();
+    // unit set of close enemy units from our base 
+    BWAPI::Unitset closeEnemyUnits;
+    
     for (auto& unit : enemyUnits)
     {   //if unit is close to base or to expansion, add it to the close enemy list
         if (unit->getDistance(Tools::GetDepot())<600 || unit->getDistance(Tools::GetNewDepot()) < 600) { closeEnemyUnits.insert(unit); }
@@ -165,7 +167,7 @@ void StarterBot::positionIdleZealots()
             else { unit->move(Tools::GetNewDepot()->getPosition()); }
             
         }
-        //if base or expansion is underattack, defend
+        //if base or natural expansion is underattack, defend
         else if (baseUnderattack() || expansionUnderattack())
         {
             BWAPI::Unit closestEnemy = Tools::GetClosestUnitTo(unit, closeEnemyUnits);
@@ -203,6 +205,7 @@ bool StarterBot::baseUnderattack()
     return false; 
 }
 
+// Return true if natural expansion is under attack
 bool StarterBot::expansionUnderattack()
 {
     if (Tools::GetNewDepot() == nullptr) { return false; }
@@ -214,24 +217,21 @@ bool StarterBot::expansionUnderattack()
     return false;
 }
 
-// Return true if current Zealot count is 1/4 our supply
+// Return true if we have enough attacking units ready for an attack
 bool StarterBot::readyForAttack() 
 {
-    // if it's the first time to attack, return true to do a first rush of 9+ zealots 
+    // berform an attack early game if we have 9 or more attacking units
     if (attackPerformed == false && allAttackers.size() >= 9) { return true; }
     else if (allAttackers.size() >= 15) { return true; }
-    /*int currentSupply = BWAPI::Broodwar->self()->supplyUsed()/2;
-    if (allAttackers.size() >= (currentSupply /3))
-    {
-        return true; 
 
-    }*/
     return false; 
 }
 
+//function that perform attacks on enemy base location
 void StarterBot::attack() 
 {
     const BWAPI::Unitset& enemyUnits = BWAPI::Broodwar->enemy()->getUnits();
+    //unitsets containing different enenmy unit types to help bot decide what unit type to attack first
     BWAPI::Unitset enemyWorkers;
     BWAPI::Unitset enemyAttackers;
     BWAPI::Unitset enemyBuildings;
@@ -284,6 +284,7 @@ void StarterBot::attack()
 }
 
 
+// return true if our attacking units have reached enemy base
 bool StarterBot::atEnemyBase(BWAPI::Unit unit)
 {
     if (unit->getDistance(enemyBasePos) <= 300) { return true; }
@@ -311,6 +312,7 @@ void StarterBot::trainAdditionalWorkers()
     }
 }
 
+// function that creats Dragoons, this function also balance the number of Dragoons and Zealots
 void StarterBot::trainDragoons()
 {
     int zealotsCount = 0;
@@ -325,23 +327,22 @@ void StarterBot::trainDragoons()
 
     for (auto& unit : myUnits)
     {
-        //no limit on zealots production for now
         if (unit->getType() == BWAPI::UnitTypes::Protoss_Gateway)
         {
-            if (!unit->isTraining() && zealotsCount>dragoonCount)
+            // if we have more Zealots than Dragoons, produce more Dragoons to create a 50% 50% balance
+            if (!unit->isTraining() && zealotsCount > dragoonCount)
             {
                 unit->train(BWAPI::UnitTypes::Protoss_Dragoon);
             }
         }
     }
 }
-
+// function that creats Zealots
 void StarterBot::trainZealots()
 {
     const BWAPI::Unitset& myUnits = BWAPI::Broodwar->self()->getUnits();
     for (auto& unit : myUnits)
     {
-        //no limit on zealots production for now
         if (unit->getType()== BWAPI::UnitTypes::Protoss_Gateway)
         {
             if (!unit->isTraining()) { unit->train(BWAPI::UnitTypes::Protoss_Zealot); }
@@ -349,6 +350,7 @@ void StarterBot::trainZealots()
     }
 }
 
+// function that do 4 different upgrades for ground units
 void StarterBot::upgradeUnits() 
 {
     BWAPI::Unit forge = Tools::GetUnitOfType(BWAPI::UnitTypes::Protoss_Forge);
@@ -384,6 +386,7 @@ void StarterBot::buildAdditionalSupply()
     }
 }
 
+// Builds 2 Gateways at main base to produce attacking units
 void StarterBot::buildGateway() 
 {
     int mineralsCount = BWAPI::Broodwar->self()->minerals(); // Get the amount of minerals farmed
@@ -417,6 +420,7 @@ void StarterBot::buildCannon()
     }
 }
 
+// build an Assimilator at main base for gas extraction
 void StarterBot::buildAssimilator()
 {
 
@@ -428,7 +432,7 @@ void StarterBot::buildAssimilator()
     }
 }
 
-
+// build a Cybernetics Core that allows the bot to produce dragoons as well as upgrade them late in game
 void StarterBot::buildCyberCore()
 {
     int gatewaysOwned= Tools::CountUnitsOfType(BWAPI::UnitTypes::Protoss_Gateway, BWAPI::Broodwar->self()->getUnits());
@@ -440,45 +444,37 @@ void StarterBot::buildCyberCore()
     }
 }
 
-//method to build gateways and 2 cannons at the Natural Expansion location
+// function that manages & builds the Natural Expansion buildings
 void StarterBot::buildExpansionBuildings()
 {
+
     BWAPI::Unit expansionNexus = Tools::GetNewDepot();
     if (expansionNexus == nullptr) { return; }
     int mineralsCount = BWAPI::Broodwar->self()->minerals();
-    //checking number of pylons at expansion base
+    //checking number of gateways and pylons at expansion base
     BWAPI::Unitset expansionUnits = expansionNexus->getUnitsInRadius(350);
+
     int numberOfPylons = Tools::CountUnitsOfType(BWAPI::UnitTypes::Protoss_Pylon, expansionUnits);
-
-    const BWAPI::Unitset& myUnits = BWAPI::Broodwar->self()->getUnits();
-    int numberOfGateways = Tools::CountUnitsOfType(BWAPI::UnitTypes::Protoss_Gateway, myUnits);
-    int cannonsOwned = Tools::CountUnitsOfType(BWAPI::UnitTypes::Protoss_Photon_Cannon, myUnits);
-
+    int numberOfGateways = Tools::CountUnitsOfType(BWAPI::UnitTypes::Protoss_Gateway, expansionUnits);
     BWAPI::TilePosition nexusTile = expansionNexus->getTilePosition();
 
-    //build pylon
     if (numberOfPylons < 1) {
+        //build pylon
         bool startedBuilding = Tools::buildBuilding(BWAPI::UnitTypes::Protoss_Pylon, nexusTile, 28);
         if (startedBuilding) { BWAPI::Broodwar->printf("Building at Expansion Base Pylon", BWAPI::UnitTypes::Protoss_Pylon.getName().c_str()); }
     }
-    //build gateways
-    else if (numberOfPylons > 0 && numberOfGateways < 4) {
+    else if (numberOfPylons > 0 && numberOfGateways < 2) {
+        //build gateways
         const bool startedBuilding = Tools::buildBuilding(BWAPI::UnitTypes::Protoss_Gateway, nexusTile, 28);
         if (startedBuilding) { BWAPI::Broodwar->printf("Building at Expansion Base Gateway", BWAPI::UnitTypes::Protoss_Gateway.getName().c_str()); }
     }
 
-    //build 2 extra gateways if we have alot of unused minerals
-    else if (mineralsCount > 900 && numberOfGateways < 6)
+    else if (mineralsCount > 900 && numberOfGateways < 5)
     {
+        //build gateways
         const bool startedBuilding = Tools::buildBuilding(BWAPI::UnitTypes::Protoss_Gateway, nexusTile, 28);
         if (startedBuilding) { BWAPI::Broodwar->printf("Building at Expansion Base Gateway", BWAPI::UnitTypes::Protoss_Gateway.getName().c_str()); }
 
-    }
-        //build 2 cannons at expansion
-    if (numberOfGateways > 3 && cannonsOwned < 4)
-    {
-        const bool startedBuilding = Tools::buildBuilding(BWAPI::UnitTypes::Protoss_Photon_Cannon, Tools::GetNewDepot()->getTilePosition(), 10);
-        if (startedBuilding) { BWAPI::Broodwar->printf("Started Building %s", BWAPI::UnitTypes::Protoss_Photon_Cannon.getName().c_str()); }
     }
 
 }
@@ -516,7 +512,7 @@ void StarterBot::getExpansionLoc()
     }
 }
 
-
+// function that send one of the workers to scout
 void StarterBot::scoutEnemy()
 {
     // start scouting when our workers count is => 9
@@ -528,7 +524,6 @@ void StarterBot::scoutEnemy()
         // if scout died, assign new scout
         workerScout = Tools::GetUnitOfType(BWAPI::UnitTypes::Protoss_Probe);
     }
-
 
     auto& startLocations = BWAPI::Broodwar->getStartLocations(); // searching all start positions
     for (BWAPI::TilePosition tilePos : startLocations)
@@ -549,6 +544,7 @@ void StarterBot::scoutEnemy()
 
 }
 
+// return true if scout has found the enemy base
 bool StarterBot::foundEnemyBase()
 {
     bool baseFound = false;
