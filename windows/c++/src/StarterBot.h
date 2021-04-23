@@ -12,19 +12,14 @@ class StarterBot
 	BWAPI::Position nullPos = { -1,-1 };
 	BWAPI::Position enemyBasePos = nullPos;
 	BWAPI::Position startingPos;
-	BWAPI::Position naturalExpansionPos = nullPos;
+	BWAPI::Position naturalExpansionPos = startingPos;
 	BWAPI::TilePosition naturalExpansionTP;//Tile Position of the natural Expansion site
 	BWAPI::TilePosition startingTP;// = BWAPI::Broodwar->self()->getStartLocation();
-	bool expandingBase = false;
-	bool attackPerformed = false;
 	BWAPI::Unitset allZealots; // all Zealots owned
 	BWAPI::Unitset baseZealots; // Zealots in our base
 	BWAPI::Unitset attackZealots; // Zealots ready to attack
 	BWAPI::Unitset allMinerals;
-	int maxNumGateways = 2;
-	int maxNumCannons = 2;
-	int sizeZealotGroups = 4;
-
+	bool attackPerformed = false;
 
 public:
 
@@ -39,16 +34,14 @@ public:
 	void attack();
 	bool atEnemyBase(BWAPI::Unit unit);
     void trainAdditionalWorkers();
+	void balanceIdleWorkers();
 	void trainZealots();
     void buildAdditionalSupply();
 	void buildGateway();
-	void buildGatewayAtExpansionBase();
-	bool closeToEnemyBase(BWAPI::Unit);
-	BWAPI::Unit closestSafeUnit(BWAPI::Position p, const BWAPI::Unitset& units);
+	void buildExpansionBuildings();
 	void buildCannon();
 	void getExpansionLoc();
 	void scoutEnemy();
-	void analyzeScout();
 	bool foundEnemyBase();
     void drawDebugInformation();
 	void debug();
