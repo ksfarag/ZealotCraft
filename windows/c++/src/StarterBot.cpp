@@ -128,7 +128,7 @@ void StarterBot::positionIdleZealots()
         {
             BWAPI::Unit closestEnemy = Tools::GetClosestUnitTo(unit, closeEnemyUnits);
             //if there is enemy close to base or expansion, attack it
-            if (unit->getType().isWorker() && !unit->isAttacking() && ( closestEnemy->getDistance(Tools::GetDepot()) < 600 || closestEnemy->getDistance(Tools::GetNewDepot()) < 600))
+            if (!unit->isAttacking() && ( closestEnemy->getDistance(Tools::GetDepot()) < 600 || closestEnemy->getDistance(Tools::GetNewDepot()) < 600))
             {
                 unit->attack(closestEnemy);
             }
