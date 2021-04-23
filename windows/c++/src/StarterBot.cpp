@@ -112,7 +112,7 @@ void StarterBot::positionIdleZealots()
     for (auto& unit : myUnits)
     {
         if (unit->getType() == BWAPI::UnitTypes::Protoss_Zealot && unit->isCompleted()) { allZealots.insert(unit); }
-        if (unit->getType() == BWAPI::UnitTypes::Protoss_Zealot && unit->isCompleted() && (unit->getDistance(Tools::GetDepot()) < 500 || unit->getDistance(Tools::GetNewDepot()) < 500))
+        if (unit->getType() == BWAPI::UnitTypes::Protoss_Zealot && unit->isCompleted() && (unit->getDistance(Tools::GetDepot()) < 500 || unit->getDistance(Tools::GetNewDepot()) < 300))
         { 
             baseZealots.insert(unit);
         }
@@ -128,7 +128,7 @@ void StarterBot::positionIdleZealots()
         {
             BWAPI::Unit closestEnemy = Tools::GetClosestUnitTo(unit, closeEnemyUnits);
             //if there is enemy close to base or expansion, attack it
-            if (!unit->isAttacking() && ( closestEnemy->getDistance(Tools::GetDepot()) < 600 || closestEnemy->getDistance(Tools::GetNewDepot()) < 600))
+            if (closestEnemy->isDetected() && !unit->isAttacking() && ( closestEnemy->getDistance(Tools::GetDepot()) < 600 || closestEnemy->getDistance(Tools::GetNewDepot()) < 600))
             {
                 unit->attack(closestEnemy);
             }
@@ -178,7 +178,7 @@ bool StarterBot::readyForAttack()
     if (attackPerformed == false && allZealots.size() >= 7) { return true; }
 
     int currentSupply = BWAPI::Broodwar->self()->supplyUsed()/2;
-    if (allZealots.size() >= (currentSupply / 4)) 
+    if (allZealots.size() >= (currentSupply /4)) 
     {
         return true; 
     }
