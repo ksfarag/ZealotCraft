@@ -28,6 +28,7 @@ public:
     // helper functions to get you started with bot programming and learn the API
     void sendIdleWorkersToMinerals();
 	void positionIdleZealots();
+	void sendWorkersToGas();
 	bool baseUnderattack();
 	bool expansionUnderattack();
 	bool readyForAttack();
@@ -40,6 +41,8 @@ public:
 	void buildGateway();
 	void buildExpansionBuildings();
 	void buildCannon();
+	void buildCyberCore();
+	void buildAssimilator();
 	void getExpansionLoc();
 	void scoutEnemy();
 	bool foundEnemyBase();

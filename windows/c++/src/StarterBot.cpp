@@ -32,6 +32,8 @@ void StarterBot::onFrame()
     // Update our MapTools information
     m_mapTools.onFrame();
 
+    sendWorkersToGas();
+
     sendIdleWorkersToMinerals();
 
     positionIdleZealots();
@@ -45,6 +47,10 @@ void StarterBot::onFrame()
     buildGateway();
 
     buildCannon();
+
+    buildAssimilator();
+
+    buildCyberCore();
 
     buildExpansionBuildings();
 
@@ -97,6 +103,28 @@ void StarterBot::sendIdleWorkersToMinerals()
     }
 }
 
+void StarterBot::sendWorkersToGas()
+{
+    int gasFarmers = 0;
+    const BWAPI::Unitset& myUnits = BWAPI::Broodwar->self()->getUnits();
+    BWAPI::Unit assimilator = Tools::GetUnitOfType(BWAPI::UnitTypes::Protoss_Assimilator);
+    
+    for (auto& unit : myUnits)
+    {
+        if (unit->isGatheringGas()) { gasFarmers++; }
+
+    }
+    for (auto& unit : myUnits)
+    {
+        bool idle = ((unit->getType().isWorker() && unit->isIdle()) || (unit->getType().isWorker() && unit->isStuck()));
+        if (idle && gasFarmers < 2 && assimilator)
+        {
+            unit->rightClick(assimilator);
+        }
+    }
+
+}
+
 // Position Zealots depending on current game state
 void StarterBot::positionIdleZealots()
 {
@@ -144,7 +172,7 @@ void StarterBot::positionIdleZealots()
             
         }
 
-        else if (!baseUnderattack() && !expansionUnderattack() && readyForAttack() && baseZealots.size() >= 7)
+        else if (!baseUnderattack() && !expansionUnderattack() && readyForAttack() && baseZealots.size() >= 5)
         {
             attackZealots = allZealots;
             baseZealots.clear();
@@ -179,7 +207,7 @@ bool StarterBot::expansionUnderattack()
 bool StarterBot::readyForAttack() 
 {
     // if it's the first time to attack, return true to do a first rush of 7+ zealots 
-    if (attackPerformed == false && allZealots.size() >= 7) { return true; }
+    if (attackPerformed == false && allZealots.size() >= 8) { return true; }
 
     int currentSupply = BWAPI::Broodwar->self()->supplyUsed()/2;
     if (allZealots.size() >= (currentSupply /4)) 
@@ -337,6 +365,23 @@ void StarterBot::buildCannon()
     }
 }
 
+void StarterBot::buildAssimilator()
+{
+
+    int workersOwned = Tools::CountUnitsOfType(BWAPI::UnitTypes::Protoss_Probe, BWAPI::Broodwar->self()->getUnits());
+    if (workersOwned > 14) 
+    {
+        const bool startedBuilding = Tools::buildBuilding(BWAPI::UnitTypes::Protoss_Assimilator, BWAPI::Broodwar->self()->getStartLocation(), 10);
+        if (startedBuilding) { BWAPI::Broodwar->printf("Started Building %s", BWAPI::UnitTypes::Protoss_Assimilator.getName().c_str()); }
+    }
+}
+
+
+void StarterBot::buildCyberCore()
+{
+
+
+}
 
 void StarterBot::buildExpansionBuildings()
 {
