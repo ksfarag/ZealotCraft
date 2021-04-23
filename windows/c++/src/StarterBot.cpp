@@ -40,6 +40,8 @@ void StarterBot::onFrame()
 
     trainAdditionalWorkers();
 
+    trainDragoons();
+
     trainZealots();
 
     buildAdditionalSupply();
@@ -117,7 +119,7 @@ void StarterBot::sendWorkersToGas()
     for (auto& unit : myUnits)
     {
         bool idle = ((unit->getType().isWorker() && unit->isIdle()) || (unit->getType().isWorker() && unit->isStuck()));
-        if (idle && gasFarmers < 2 && assimilator)
+        if (idle && gasFarmers < 1 && assimilator)
         {
             unit->rightClick(assimilator);
         }
@@ -139,15 +141,21 @@ void StarterBot::positionIdleZealots()
     const BWAPI::Unitset& myUnits = BWAPI::Broodwar->self()->getUnits();
     for (auto& unit : myUnits)
     {
-        if (unit->getType() == BWAPI::UnitTypes::Protoss_Zealot && unit->isCompleted()) { allZealots.insert(unit); }
-        if (unit->getType() == BWAPI::UnitTypes::Protoss_Zealot && unit->isCompleted() && (unit->getDistance(Tools::GetDepot()) < 500 || unit->getDistance(Tools::GetNewDepot()) < 300))
-        { 
-            baseZealots.insert(unit);
+        if (unit->getType() == BWAPI::UnitTypes::Protoss_Zealot && unit->isCompleted()) { allAttackers.insert(unit); }
+        if (unit->getType() == BWAPI::UnitTypes::Protoss_Dragoon && unit->isCompleted()) { allAttackers.insert(unit); }
+
+        if (unit->getType() == BWAPI::UnitTypes::Protoss_Zealot && unit->isCompleted() && (unit->getDistance(Tools::GetDepot()) < 500 || unit->getDistance(Tools::GetNewDepot()) < 400))
+        {
+            baseAttackers.insert(unit);
         }
-        bool idelZealot = (unit->getType() == BWAPI::UnitTypes::Protoss_Zealot && (unit->isIdle() || unit->isHoldingPosition()));
+        if (unit->getType() == BWAPI::UnitTypes::Protoss_Dragoon && unit->isCompleted() && (unit->getDistance(Tools::GetDepot()) < 500 || unit->getDistance(Tools::GetNewDepot()) < 400))
+        { 
+            baseAttackers.insert(unit);
+        }
+        bool idelAttacker = ((unit->getType() == BWAPI::UnitTypes::Protoss_Zealot || unit->getType() == BWAPI::UnitTypes::Protoss_Dragoon) && (unit->isIdle() || unit->isHoldingPosition()));
         
         //if not attacking or under attack stay in Place
-        if (idelZealot && !baseUnderattack() && !readyForAttack() && !expansionUnderattack())
+        if (idelAttacker && !baseUnderattack() && !readyForAttack() && !expansionUnderattack())
         {
             //if we didn't expand, hold position at main base
             if (Tools::GetNewDepot() == nullptr) { unit->holdPosition(); }
@@ -172,10 +180,10 @@ void StarterBot::positionIdleZealots()
             
         }
 
-        else if (!baseUnderattack() && !expansionUnderattack() && readyForAttack() && baseZealots.size() >= 5)
+        else if (!baseUnderattack() && !expansionUnderattack() && readyForAttack() && baseAttackers.size() >= 7)
         {
-            attackZealots = allZealots;
-            baseZealots.clear();
+            attackers = allAttackers;
+            baseAttackers.clear();
             attack();
         }
     }
@@ -206,15 +214,15 @@ bool StarterBot::expansionUnderattack()
 // Return true if current Zealot count is 1/4 our supply
 bool StarterBot::readyForAttack() 
 {
-    // if it's the first time to attack, return true to do a first rush of 7+ zealots 
-    if (attackPerformed == false && allZealots.size() >= 8) { return true; }
-
-    int currentSupply = BWAPI::Broodwar->self()->supplyUsed()/2;
-    if (allZealots.size() >= (currentSupply /4)) 
+    // if it's the first time to attack, return true to do a first rush of 9+ zealots 
+    if (attackPerformed == false && allAttackers.size() >= 9) { return true; }
+    else if (allAttackers.size() >= 15) { return true; }
+    /*int currentSupply = BWAPI::Broodwar->self()->supplyUsed()/2;
+    if (allAttackers.size() >= (currentSupply /3))
     {
         return true; 
 
-    }
+    }*/
     return false; 
 }
 
@@ -246,7 +254,7 @@ void StarterBot::attack()
         }
     }
     
-    for (auto& unit : attackZealots)
+    for (auto& unit : allAttackers)
     {   
         // if base or expansion is under attack, retreat
         if (baseUnderattack() || expansionUnderattack()) 
@@ -269,7 +277,7 @@ void StarterBot::attack()
         }
 
     }
-    allZealots.clear();
+    allAttackers.clear();
 }
 
 
@@ -285,14 +293,14 @@ void StarterBot::trainAdditionalWorkers()
     // if expanded, wanted workers = 40, else = 20
     int nomOfGateways = Tools::CountUnitsOfType(BWAPI::UnitTypes::Protoss_Gateway, BWAPI::Broodwar->self()->getUnits());
     int workersWanted;
-    if (nomOfGateways < 4) { workersWanted = 20; }
+    if (nomOfGateways < 3) { workersWanted = 20; }
     else { workersWanted = 40; }
     const int workersOwned = Tools::CountUnitsOfType(BWAPI::UnitTypes::Protoss_Probe, BWAPI::Broodwar->self()->getUnits());
     
     if (workersOwned < workersWanted )
     {
         const BWAPI::Unit mainDepot = Tools::GetDepot();
-        const BWAPI::Unit expansionDepot = Tools::GetDepot();
+        const BWAPI::Unit expansionDepot = Tools::GetNewDepot();
         // if we have a valid main depot unit and it's currently not training something, train a worker
         if (mainDepot && !mainDepot->isTraining()) { mainDepot->train(BWAPI::UnitTypes::Protoss_Probe); }
         // if we have a valid expansion depot unit and it's currently not training something, train a worker
@@ -300,6 +308,30 @@ void StarterBot::trainAdditionalWorkers()
     }
 }
 
+void StarterBot::trainDragoons()
+{
+    int zealotsCount = 0;
+    int dragoonCount = 0;
+    const BWAPI::Unitset& myUnits = BWAPI::Broodwar->self()->getUnits();
+
+    for (auto& unit : myUnits)
+    {
+        if (unit->getType() == BWAPI::UnitTypes::Protoss_Zealot) { zealotsCount++; }
+        if (unit->getType() == BWAPI::UnitTypes::Protoss_Dragoon) { dragoonCount++; }
+    }
+
+    for (auto& unit : myUnits)
+    {
+        //no limit on zealots production for now
+        if (unit->getType() == BWAPI::UnitTypes::Protoss_Gateway)
+        {
+            if (!unit->isTraining() && zealotsCount>dragoonCount)
+            {
+                unit->train(BWAPI::UnitTypes::Protoss_Dragoon);
+            }
+        }
+    }
+}
 
 void StarterBot::trainZealots()
 {
@@ -379,8 +411,13 @@ void StarterBot::buildAssimilator()
 
 void StarterBot::buildCyberCore()
 {
-
-
+    int gatewaysOwned= Tools::CountUnitsOfType(BWAPI::UnitTypes::Protoss_Gateway, BWAPI::Broodwar->self()->getUnits());
+    int cyberCoresOwned = Tools::CountUnitsOfType(BWAPI::UnitTypes::Protoss_Cybernetics_Core, BWAPI::Broodwar->self()->getUnits());
+    if (gatewaysOwned >= 2 && cyberCoresOwned < 1)
+    {
+        const bool startedBuilding = Tools::buildBuilding(BWAPI::UnitTypes::Protoss_Cybernetics_Core, BWAPI::Broodwar->self()->getStartLocation(), 10);
+        if (startedBuilding) { BWAPI::Broodwar->printf("Started Building %s", BWAPI::UnitTypes::Protoss_Cybernetics_Core.getName().c_str()); }
+    }
 }
 
 void StarterBot::buildExpansionBuildings()
@@ -396,7 +433,7 @@ void StarterBot::buildExpansionBuildings()
     int numberOfGateways = Tools::CountUnitsOfType(BWAPI::UnitTypes::Protoss_Gateway, expansionUnits);
     BWAPI::TilePosition nexusTile = expansionNexus->getTilePosition();
 
-    if (numberOfPylons < 2) {
+    if (numberOfPylons < 1) {
         //build pylon
 
         bool startedBuilding = Tools::buildBuilding(BWAPI::UnitTypes::Protoss_Pylon, nexusTile, 28);
@@ -436,7 +473,7 @@ void StarterBot::getExpansionLoc()
         BWAPI::Unit closestMineralToBase = Tools::GetClosestUnitTo(Tools::GetDepot()->getPosition(), allMinerals);
         BWAPI::TilePosition tp = closestMineralToBase->getTilePosition();
         BWAPI::Position pos(tp);
-        const bool startedBuilding = Tools::buildBuilding(BWAPI::UnitTypes::Protoss_Nexus, tp, 10);
+        const bool startedBuilding = Tools::buildBuilding(BWAPI::UnitTypes::Protoss_Nexus, tp, 18);
         naturalExpansionPos = pos;
         naturalExpansionTP = tp;
         if (Tools::CountUnitsOfType(BWAPI::UnitTypes::Protoss_Nexus, BWAPI::Broodwar->self()->getUnits()) == 2)
