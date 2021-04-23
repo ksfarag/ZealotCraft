@@ -121,7 +121,11 @@ void StarterBot::positionIdleZealots()
         //if not attacking or under attack stay in Place
         if (idelZealot && !baseUnderattack() && !readyForAttack() && !expansionUnderattack())
         {
-            unit->holdPosition();
+            //if we didn't expand, hold position at main base
+            if (Tools::GetNewDepot() == nullptr) { unit->holdPosition(); }
+            //else stay in expansion
+            else { unit->move(Tools::GetNewDepot()->getPosition()); }
+            
         }
         //if base or expansion is underattack, defend
         else if (baseUnderattack() || expansionUnderattack())
@@ -174,13 +178,14 @@ bool StarterBot::expansionUnderattack()
 // Return true if current Zealot count is 1/4 our supply
 bool StarterBot::readyForAttack() 
 {
-    // if it's the first time to attack, return true to do a first rush of 5+ zealots 
+    // if it's the first time to attack, return true to do a first rush of 7+ zealots 
     if (attackPerformed == false && allZealots.size() >= 7) { return true; }
 
     int currentSupply = BWAPI::Broodwar->self()->supplyUsed()/2;
     if (allZealots.size() >= (currentSupply /4)) 
     {
         return true; 
+
     }
     return false; 
 }
@@ -236,6 +241,7 @@ void StarterBot::attack()
         }
 
     }
+    allZealots.clear();
 }
 
 
@@ -345,7 +351,7 @@ void StarterBot::buildExpansionBuildings()
     int numberOfGateways = Tools::CountUnitsOfType(BWAPI::UnitTypes::Protoss_Gateway, expansionUnits);
     BWAPI::TilePosition nexusTile = expansionNexus->getTilePosition();
 
-    if (numberOfPylons < 1) {
+    if (numberOfPylons < 2) {
         //build pylon
 
         bool startedBuilding = Tools::buildBuilding(BWAPI::UnitTypes::Protoss_Pylon, nexusTile, 28);
@@ -385,7 +391,7 @@ void StarterBot::getExpansionLoc()
         BWAPI::Unit closestMineralToBase = Tools::GetClosestUnitTo(Tools::GetDepot()->getPosition(), allMinerals);
         BWAPI::TilePosition tp = closestMineralToBase->getTilePosition();
         BWAPI::Position pos(tp);
-        const bool startedBuilding = Tools::buildBuilding(BWAPI::UnitTypes::Protoss_Nexus, tp, 30);
+        const bool startedBuilding = Tools::buildBuilding(BWAPI::UnitTypes::Protoss_Nexus, tp, 10);
         naturalExpansionPos = pos;
         naturalExpansionTP = tp;
         if (Tools::CountUnitsOfType(BWAPI::UnitTypes::Protoss_Nexus, BWAPI::Broodwar->self()->getUnits()) == 2)
