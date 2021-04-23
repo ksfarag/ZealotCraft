@@ -44,6 +44,8 @@ void StarterBot::onFrame()
 
     trainZealots();
 
+    upgradeUnits();
+
     buildAdditionalSupply();
 
     buildGateway();
@@ -119,7 +121,7 @@ void StarterBot::sendWorkersToGas()
     for (auto& unit : myUnits)
     {
         bool idle = ((unit->getType().isWorker() && unit->isIdle()) || (unit->getType().isWorker() && unit->isStuck()));
-        if (idle && gasFarmers < 1 && assimilator)
+        if (idle && gasFarmers < 3 && assimilator)
         {
             unit->rightClick(assimilator);
         }
@@ -170,6 +172,7 @@ void StarterBot::positionIdleZealots()
             //if there is enemy close to base or expansion, attack it
             if (closestEnemy->isDetected() && !unit->isAttacking() && ( closestEnemy->getDistance(Tools::GetDepot()) < 600 || closestEnemy->getDistance(Tools::GetNewDepot()) < 600))
             {
+                if (unit->getType() == BWAPI::UnitTypes::Protoss_Dragoon) { continue; }
                 unit->attack(closestEnemy);
             }
             // else if enemy runnuing, don't chance and go back to base
@@ -182,7 +185,7 @@ void StarterBot::positionIdleZealots()
 
         else if (!baseUnderattack() && !expansionUnderattack() && readyForAttack() && baseAttackers.size() >= 7)
         {
-            attackers = allAttackers;
+            //attackers = allAttackers;
             baseAttackers.clear();
             attack();
         }
@@ -294,7 +297,7 @@ void StarterBot::trainAdditionalWorkers()
     int nomOfGateways = Tools::CountUnitsOfType(BWAPI::UnitTypes::Protoss_Gateway, BWAPI::Broodwar->self()->getUnits());
     int workersWanted;
     if (nomOfGateways < 3) { workersWanted = 20; }
-    else { workersWanted = 40; }
+    else { workersWanted = 45; }
     const int workersOwned = Tools::CountUnitsOfType(BWAPI::UnitTypes::Protoss_Probe, BWAPI::Broodwar->self()->getUnits());
     
     if (workersOwned < workersWanted )
@@ -344,6 +347,23 @@ void StarterBot::trainZealots()
             if (!unit->isTraining()) { unit->train(BWAPI::UnitTypes::Protoss_Zealot); }
         }
     }
+}
+
+void StarterBot::upgradeUnits() 
+{
+    BWAPI::Unit forge = Tools::GetUnitOfType(BWAPI::UnitTypes::Protoss_Forge);
+    BWAPI::Unit CyberCore = Tools::GetUnitOfType(BWAPI::UnitTypes::Protoss_Cybernetics_Core);
+    BWAPI::Unit expansionDepot = Tools::GetNewDepot();
+    int mineralsCount = BWAPI::Broodwar->self()->minerals();
+
+    if (expansionDepot != nullptr && mineralsCount > 200) 
+    {
+        if (forge && forge->canUpgrade(BWAPI::UpgradeTypes::Protoss_Ground_Weapons)) { forge->upgrade(BWAPI::UpgradeTypes::Protoss_Ground_Weapons); }
+        if (forge && forge->canUpgrade(BWAPI::UpgradeTypes::Protoss_Ground_Armor)) { forge->upgrade(BWAPI::UpgradeTypes::Protoss_Ground_Armor); }
+        if (forge && forge->canUpgrade(BWAPI::UpgradeTypes::Protoss_Plasma_Shields)) { forge->upgrade(BWAPI::UpgradeTypes::Protoss_Plasma_Shields); }
+        if (CyberCore && CyberCore->canUpgrade(BWAPI::UpgradeTypes::Singularity_Charge)) { CyberCore->upgrade(BWAPI::UpgradeTypes::Singularity_Charge); }
+    }
+   
 }
 
 // Build more supply if we are going to run out soon
@@ -425,7 +445,7 @@ void StarterBot::buildExpansionBuildings()
 
     BWAPI::Unit expansionNexus = Tools::GetNewDepot();
     if (expansionNexus == nullptr) { return; }
-
+    int mineralsCount = BWAPI::Broodwar->self()->minerals();
     //checking number of gateways and pylons at expansion base
     BWAPI::Unitset expansionUnits = expansionNexus->getUnitsInRadius(350);
 
@@ -435,19 +455,22 @@ void StarterBot::buildExpansionBuildings()
 
     if (numberOfPylons < 1) {
         //build pylon
-
         bool startedBuilding = Tools::buildBuilding(BWAPI::UnitTypes::Protoss_Pylon, nexusTile, 28);
-
         if (startedBuilding) { BWAPI::Broodwar->printf("Building at Expansion Base Pylon", BWAPI::UnitTypes::Protoss_Pylon.getName().c_str()); }
-
     }
     else if (numberOfPylons > 0 && numberOfGateways < 2) {
         //build gateways
         const bool startedBuilding = Tools::buildBuilding(BWAPI::UnitTypes::Protoss_Gateway, nexusTile, 28);
-
         if (startedBuilding) { BWAPI::Broodwar->printf("Building at Expansion Base Gateway", BWAPI::UnitTypes::Protoss_Gateway.getName().c_str()); }
     }
 
+    else if (mineralsCount > 900 && numberOfGateways < 4)
+    {
+        //build gateways
+        const bool startedBuilding = Tools::buildBuilding(BWAPI::UnitTypes::Protoss_Gateway, nexusTile, 28);
+        if (startedBuilding) { BWAPI::Broodwar->printf("Building at Expansion Base Gateway", BWAPI::UnitTypes::Protoss_Gateway.getName().c_str()); }
+
+    }
 
 }
 

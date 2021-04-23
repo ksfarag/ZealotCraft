@@ -17,7 +17,7 @@ class StarterBot
 	BWAPI::TilePosition startingTP;// = BWAPI::Broodwar->self()->getStartLocation();
 	BWAPI::Unitset allAttackers; // all Zealots owned
 	BWAPI::Unitset baseAttackers; // Zealots in our base
-	BWAPI::Unitset attackers; // Units ready to attack
+	//BWAPI::Unitset attackers; // Units ready to attack
 	BWAPI::Unitset allMinerals;
 	bool attackPerformed = false;
 
@@ -25,7 +25,6 @@ public:
 
     StarterBot();
 
-    // helper functions to get you started with bot programming and learn the API
     void sendIdleWorkersToMinerals();
 	void positionIdleZealots();
 	void sendWorkersToGas();
@@ -35,9 +34,9 @@ public:
 	void attack();
 	bool atEnemyBase(BWAPI::Unit unit);
     void trainAdditionalWorkers();
-	void balanceIdleWorkers();
 	void trainDragoons();
 	void trainZealots();
+	void upgradeUnits();
     void buildAdditionalSupply();
 	void buildGateway();
 	void buildExpansionBuildings();

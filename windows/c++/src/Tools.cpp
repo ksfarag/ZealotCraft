@@ -73,7 +73,7 @@ BWAPI::Unit Tools::GetWorker(BWAPI::UnitType type)
     for (auto& unit : BWAPI::Broodwar->self()->getUnits())
     {
         
-        if (unit->getType() == type && unit->isCompleted() && (unit->getDistance(startPos)<250))
+        if (unit->getType() == type && unit->isCompleted() && (unit->getDistance(startPos)<800))
         {
             return unit;
         }
