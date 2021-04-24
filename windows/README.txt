@@ -1,5 +1,9 @@
 Group Members: Giovanni Sylvestre (201724598), Kerolos Farag (201759057)
 
+Youtube Link for Trailer: https://youtu.be/3TGsxk13JdE
+
+Youtube Link for Project Presentation: https://youtu.be/s9e7D-iZOeY
+
 Name of our AI Bot: Zealot Craft
 
 Objective: To perform Zealot Rush
