@@ -1,7 +1,6 @@
 windows/c++/visualstudio/Release
 windows/c++/visualstudio/Debug
 windows/c++/visualstudio/.vs
-windows/starcraft/bwapi-data/*
 windows/starcraft/characters/*
 windows/starcraft/maps/*
 windows/starcraft/*.exe
