@@ -12,13 +12,14 @@ class StarterBot
 	BWAPI::Position nullPos = { -1,-1 };
 	BWAPI::Position enemyBasePos = nullPos;
 	BWAPI::Position startingPos;
-	BWAPI::Position naturalExpansionPos = startingPos;
-	BWAPI::TilePosition naturalExpansionTP;  //Tile Position of the natural Expansion site
 	BWAPI::TilePosition startingTP;         
-	BWAPI::Unitset allAttackers;             // all attacking units owned
+	BWAPI::Unitset allFighters;              // all attacking units owned
 	BWAPI::Unitset baseAttackers;            // attacking units sitting in our base
 	BWAPI::Unitset allMinerals;
+	BWAPI::Unitset myUnits;
 	bool attackPerformed = false;
+	int gasFarmersCount = 0;
+	int mineralFarmersCount = 0;
 
 public:
 
@@ -27,9 +28,9 @@ public:
     void sendIdleWorkersToMinerals();
 	void positionIdleZealots();
 	void sendWorkersToGas();
-	bool baseUnderattack();
-	bool expansionUnderattack();
-	bool readyForAttack();
+	bool isBaseUnderAttack();
+	bool isExpansionUnderAttack();
+	bool isReadyForAttack();
 	void attack();
 	bool atEnemyBase(BWAPI::Unit unit);
     void trainAdditionalWorkers();
@@ -37,12 +38,12 @@ public:
 	void trainZealots();
 	void upgradeUnits();
     void buildAdditionalSupply();
-	void buildGateway();
+	void buildGateways();
 	void buildExpansionBuildings();
 	void buildCannon();
 	void buildCyberCore();
 	void buildAssimilator();
-	void getExpansionLoc();
+	void buildExpansionNexus();
 	void scoutEnemy();
 	bool foundEnemyBase();
     void drawDebugInformation();
